@@ -1,0 +1,89 @@
+{
+    "Toolbar-root": {
+        "layout": {
+            "direction": "row",
+            "mainAxisAlignment": "center",
+            "crossAxisAlignment": "stretch",
+            "spacing": 2
+        },
+        "padding": { "top": 1, "bottom": 1, "left": 1, "right": 1 },
+        "typography": { "fontSize": 1.25 }
+    },
+    "Editor-root": {
+        "background": { "color": [0, 0, 100, 100] },
+        "layout": {
+            "direction": "column",
+            "mainAxisAlignment": "start",
+            "crossAxisAlignment": "stretch",
+            "spacing": 0
+        },
+        "position": { "mainAxisAlignment": "stretch", "crossAxisAlignment": "stretch" }
+    },
+    "Editable-root": {
+        "layout": {
+            "direction": "column",
+            "mainAxisAlignment": "start",
+            "crossAxisAlignment": "stretch",
+            "spacing": 1
+        },
+        "position": { "mainAxisAlignment": "stretch", "crossAxisAlignment": "stretch" },
+        "padding": { "top": 1, "bottom": 1, "left": 3, "right": 1 }
+    },
+    "Viewer-root": {
+        "layout": {
+            "direction": "column",
+            "mainAxisAlignment": "start",
+            "crossAxisAlignment": "stretch",
+            "spacing": 1
+        },
+        "padding": { "top": 1, "bottom": 1, "left": 1, "right": 1 },
+        "background": { "color": [0, 0, 100, 100] },
+        "position": { "mainAxisAlignment": "stretch", "crossAxisAlignment": "stretch" }
+    },
+    "Paragraph-bold": { "typography": { "fontWeight": 600 } },
+    "Header-root": { "typography": { "fontSize": 1.5, "fontWeight": 500 } },
+    "Image-root": {
+        "layout": {
+            "direction": "row",
+            "mainAxisAlignment": "center",
+            "crossAxisAlignment": "stretch",
+            "spacing": 1
+        }
+    },
+    "SpacerToolbar-toggle": {
+        "typography": { "fontSize": 1.5 },
+        "size": { "width": 3 },
+        "layout": {
+            "direction": "row",
+            "mainAxisAlignment": "center",
+            "crossAxisAlignment": "stretch",
+            "spacing": 1
+        }
+    },
+    "Paragraph-root": { "typography": { "fontSize": 1.25 } },
+    "SpacerToolbar-menu": {
+        "layout": {
+            "direction": "row",
+            "mainAxisAlignment": "start",
+            "crossAxisAlignment": "stretch",
+            "spacing": 0.5
+        }
+    },
+    "SpacerToolbar-button": { "typography": { "fontSize": 1.25 } },
+    "ListItem-root": { "typography": { "fontSize": 1.25 } },
+    "FloatingToolbar-root": {
+        "layout": {
+            "direction": "row",
+            "mainAxisAlignment": "start",
+            "crossAxisAlignment": "stretch",
+            "spacing": 1
+        },
+        "background": { "color": [0, 0, 0, 100] },
+        "typography": { "color": [0, 0, 100, 100] },
+        "padding": { "top": 1, "bottom": 1, "left": 1, "right": 1 },
+        "corner": { "topLeft": 0.25, "topRight": 0.25, "bottomLeft": 0.25, "bottomRight": 0.25 }
+    },
+    "Toolbar-button:active": { "typography": { "color": [200, 50, 50, 100] } },
+    "FloatingToolbar-button:active": { "typography": { "color": [200, 50, 64, 100] } },
+    "ListItem-bold": { "typography": { "fontWeight": 600 } }
+}
