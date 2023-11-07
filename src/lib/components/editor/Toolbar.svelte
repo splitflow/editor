@@ -16,7 +16,6 @@
     $: blockTypeData = readBlockType($selection)
 
     function swapHeader() {
-        editor.snapshotSelection({ restoreAfterUpdate: true })
         if (blockTypeData.header) {
             editor.swap(readSelection($selection), createParagraphBlock())
         } else {

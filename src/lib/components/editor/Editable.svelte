@@ -18,8 +18,7 @@
         findAncestorRootChild,
         isSelectionCollapsedAtEnd,
         isSelectionCollapsedAtStart,
-        setSelectionCollapsed,
-        createSelectionSnapshot
+        setSelectionCollapsed
     } from '../../dom'
     import { windowSelectionRange } from '../../windowselection'
     import { RecordGroup, createDocumentRegistry } from '../../registry'
@@ -30,6 +29,7 @@
     import SpacerToolbar from './SpacerToolbar.svelte'
     import ListItem from './ListItem.svelte'
     import Spacer from './Spacer.svelte'
+    import { createSelectionSnapshot } from '../../selection-snapshot'
 
     const style = createStyle('Editable')
     const config = createConfig('Editable')
@@ -68,6 +68,7 @@
     select((action) => {
         const record = $registry.getRecord(action.block)
         if (record?.element) {
+            console.log('Select')
             setSelectionCollapsed(record.element, action.atStart)
         } else {
             console.warn(
@@ -84,7 +85,7 @@
 
     snapshotSelection((action) => {
         const record = action.block ? $registry.getRecord(action.block) : undefined
-        return { snapshot: createSelectionSnapshot(record?.element ?? element, action) }
+        return { snapshot: createSelectionSnapshot(record?.element ?? element/*, action*/) }
     })
 
     function keydown(event: KeyboardEvent) {

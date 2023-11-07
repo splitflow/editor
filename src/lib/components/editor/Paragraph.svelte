@@ -14,6 +14,7 @@
         cloneNode,
         getBoundedSelectionRange
     } from '../../dom'
+    import { formatData } from '../../stores/document/format'
 
     const style = createStyle('Paragraph')
 
@@ -37,7 +38,7 @@
         const range = getBoundedSelectionRange(element)
         if (range) {
             formatStore.push({
-                [key(block)]: getRangeWrappers(range, element, { B: false, I: false })
+                [key(block)]: formatData(getRangeWrappers(range, element))
             })
             return
         }
@@ -81,6 +82,7 @@
 </script>
 
 <p
+    data-sf-block-id={block.blockId}
     class={style.root()}
     bind:this={element}
     use:editableMarkdown={{ markdown: block.markdown, style }}

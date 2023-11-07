@@ -1,3 +1,8 @@
+export interface AncestorOptions {
+    includeNode?: boolean
+    includeRoot?: boolean
+}
+
 export function findAncestor(element: Node, root: Node, nodeName: string) {
     while (element !== root) {
         if (element.nodeName === nodeName) return element
@@ -12,11 +17,15 @@ export function findAncestorRootChild(element: HTMLElement, root: HTMLElement) {
     }
 }
 
-export function getAncestors(node: Node, root: Node) {
-    const result = [node]
-    while (result[0] !== root) {
-        result.unshift(result[0].parentNode)
+export function getAncestors(node: Node, root: Node, options?: AncestorOptions) {
+    const result: Node[] = []
+    while (node !== root) {
+        result.unshift(node)
+        node = node.parentNode
     }
+
+    if (!options?.includeNode) result.pop()
+    if (options?.includeRoot) result.unshift(root)
     return result
 }
 

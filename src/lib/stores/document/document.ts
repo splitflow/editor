@@ -21,7 +21,7 @@ interface SnapshotNode {
 }
 
 export default function createDocumentStore(fragments: FragmentsStore): DocumentStore {
-    let documentSnapshot: SnapshotNode = {}
+    let snapshot: SnapshotNode = {}
     let value: BlockNode[]
     let position = 0
     let synced = false
@@ -36,11 +36,11 @@ export default function createDocumentStore(fragments: FragmentsStore): Document
                 newFragments = $fragments
             }
 
-            const snapshot = mergeASTFragments(newFragments)
-            documentSnapshot = mergeSnapshot(documentSnapshot, snapshot)
+            const fragment = mergeASTFragments(newFragments)
+            snapshot = mergeSnapshot(snapshot, fragment)
             position = $fragments.length
 
-            set((value = Object.values(documentSnapshot).sort(sortBlocks)))
+            set((value = Object.values(snapshot).sort(sortBlocks)))
         })
 
         synced = true
@@ -118,18 +118,35 @@ function mergeASTFragments(fragments: DocumentNode[]): DocumentNode {
     return fragments.reduce(merge, {})
 }
 
+/**
+ * The merge operation mutates bocks only if they have modified properties
+ * We force mutate to make sure we re-sync svelte components with the block data
+ * Snapshot blocks which are not modified keep the same object instance, 
+ * and so the svelte component marked with <svelte:options immutable={true} /> will not trigger an update.
+ */
 function mergeSnapshot(snapshot: SnapshotNode, fragment: DocumentNode) {
     if (!fragment) return snapshot
+
+    for (const block of Object.values(fragment)) {
+        // force mutate
+        if (block) block._force = true
+    }
 
     const result = merge(snapshot, fragment as any, {
         deleteNullProps: true
     }) as SnapshotNode
+
     for (const [key, block] of Object.entries(result)) {
         if (!block.blockId || !block.blockType) {
             // mutate only newly created blocks
             const { blockId, blockType } = parseKey(key)
             block.blockId = blockId
             block.blockType = blockType
+        }
+
+        if ((block as any)._force) {
+            // clesn up
+            delete (block as any)._force
         }
     }
     return result

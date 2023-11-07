@@ -17,7 +17,7 @@ import type {
     RemoveAction,
     ReplaceAction
 } from './actions'
-import { restoreSelectionSnapshot, type RangeSnapshot } from './dom'
+import { restoreSelectionSnapshot, type SelectionSnapshot } from './selection-snapshot'
 import type { Readable } from 'svelte/store'
 import { getDefaultApp, type SplitflowApp, type Dispatcher, type Result } from '@splitflow/app'
 import {
@@ -54,7 +54,7 @@ export interface SelectAction {
 }
 
 export interface SelectResult {
-    snapshot?: RangeSnapshot
+    snapshot?: SelectionSnapshot
 }
 
 export interface SnapshotSelectionOptions {
@@ -73,7 +73,7 @@ export interface SnapshotSelectionAction {
 }
 
 export interface SnapshotSelectionResult {
-    snapshot?: RangeSnapshot
+    snapshot?: SelectionSnapshot
 }
 
 export interface FlushOptions {
@@ -224,7 +224,10 @@ export class EditorModule {
             className: formatClassName(tagName),
             off
         }
+
+        const snapshot = this.snapshotSelection()
         this.dispatcher.dispatchAction(action, { discriminator: this, multiDispatch: true })
+        restoreSelectionSnapshot(snapshot)
     }
 
     select(block: BlockNode, options?: SelectOptions) {
@@ -352,7 +355,7 @@ export function format(handler: (action: FormatAction) => Result) {
 export function select(handler: (action: SelectAction) => SelectResult) {
     const editor = getContext<EditorModule>(EditorModule)
     let afterUpdateAction: SelectAction
-    let afterUpdateSnapshot: RangeSnapshot
+    let afterUpdateSnapshot: SelectionSnapshot
 
     onMount(() => {
         function select(action: SelectAction): Result {
@@ -375,6 +378,7 @@ export function select(handler: (action: SelectAction) => SelectResult) {
     })
 
     afterUpdate(() => {
+        console.log('after update')
         if (afterUpdateAction) {
             handler(afterUpdateAction)
             afterUpdateAction = null
@@ -390,7 +394,7 @@ export function snapshotSelection(
     handler: (action: SnapshotSelectionAction) => SnapshotSelectionResult
 ) {
     const editor = getContext<EditorModule>(EditorModule)
-    let afterUpdateSnapshot: RangeSnapshot
+    let afterUpdateSnapshot: SelectionSnapshot
 
     onMount(() => {
         function snapshotSelection(action: SnapshotSelectionAction): Result {
@@ -410,6 +414,7 @@ export function snapshotSelection(
 
     afterUpdate(() => {
         if (afterUpdateSnapshot) {
+            console.log(afterUpdateSnapshot)
             restoreSelectionSnapshot(afterUpdateSnapshot)
             afterUpdateSnapshot = null
         }

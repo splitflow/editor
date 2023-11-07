@@ -21,9 +21,10 @@
 </script>
 
 <div
-    bind:this={element}
+    data-sf-block-id={block.blockId}
     draggable="true"
     style={selected ? 'background: blue;' : ''}
+    bind:this={element}
 >
     <span><br /></span>
     <figure class={style.root()} contenteditable="false">

@@ -48,37 +48,41 @@ export interface ImageNode {
     src: string
 }
 
-export function createBlock<T extends BlockNode>(block: T, position = 1000): T {
+export function createBlock<T extends BlockNode>(
+    block: T,
+    position = 10e8,
+    blockId: string = crypto.randomUUID()
+): T {
     return {
         ...block,
-        blockId: Math.random() + '',
+        blockId,
         position
     }
 }
 
-export function createSpacerBlock(position = 1000): SpacerNode {
+export function createSpacerBlock(): SpacerNode {
     return {
         blockType: 'spacer',
-        blockId: Math.random() + '',
-        position,
+        blockId: crypto.randomUUID(),
+        position: 10e8,
         text: ''
     }
 }
 
-export function createParagraphBlock(markdown = '', position = 1000): ParagraphNode {
+export function createParagraphBlock(markdown = '', position = 10e8): ParagraphNode {
     return {
         blockType: 'paragraph',
-        blockId: Math.random() + '',
+        blockId: crypto.randomUUID(),
         position,
         markdown
     }
 }
 
-export function createListItemBlock(markdown = '', ordered = false, position = 1000): ListItemNode {
+export function createListItemBlock(markdown = '', ordered = false): ListItemNode {
     return {
         blockType: 'list-item',
-        blockId: Math.random() + '',
-        position,
+        blockId: crypto.randomUUID(),
+        position: 10e8,
         ordered,
         markdown
     }
@@ -87,8 +91,8 @@ export function createListItemBlock(markdown = '', ordered = false, position = 1
 export function createHeaderBlock(text = ''): HeaderNode {
     return {
         blockType: 'header',
-        blockId: Math.random() + '',
-        position: 1000,
+        blockId: crypto.randomUUID(),
+        position: 10e8,
         text
     }
 }
@@ -96,8 +100,8 @@ export function createHeaderBlock(text = ''): HeaderNode {
 export function createImageBlock(src: string): ImageNode {
     return {
         blockType: 'image',
-        blockId: Math.random() + '',
-        position: 1000,
+        blockId: crypto.randomUUID(),
+        position: 10e8,
         src
     }
 }

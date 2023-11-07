@@ -3,7 +3,6 @@ import { first, last } from '@splitflow/core/utils'
 import { key, createParagraphBlock, data, createBlock, type BlockNode } from './document'
 import { EditorModule } from './editor-module'
 
-
 export interface MergeAction {
     type: 'merge'
     block1: BlockNode
@@ -61,8 +60,7 @@ export function split(action: SplitAction, editor: EditorModule): Result {
         [key(block)]: data(block, true),
         [key(splitBlock)]: data(splitBlock)
     })
-    editor.snapshotSelection({ restoreAfterUpdate: true })
-
+    editor.select(splitBlock, { atStart: true, afterUpdate: true })
     return {}
 }
 
@@ -105,7 +103,11 @@ export function swap(action: SwapAction, editor: EditorModule): Result {
         const flushedBlock = editor.flush(block)
 
         if (block.blockType !== action.templateBlock.blockType) {
-            let swapedBlock = createBlock(action.templateBlock, flushedBlock.position)
+            let swapedBlock = createBlock(
+                action.templateBlock,
+                flushedBlock.position,
+                flushedBlock.blockId
+            )
             swapedBlock = editor.mergeData(swapedBlock, flushedBlock)
             swapedBlocks.push(swapedBlock)
             deleteBlocks.push(flushedBlock)
@@ -116,8 +118,7 @@ export function swap(action: SwapAction, editor: EditorModule): Result {
         ...Object.fromEntries(deleteBlocks.map((block) => [[key(block)], null])),
         ...Object.fromEntries(swapedBlocks.map((block) => [[key(block)], data(block)]))
     })
-    editor.select(last(swapedBlocks), { afterUpdate: true })
-
+    editor.snapshotSelection({ restoreAfterUpdate: true })
     return {}
 }
 

@@ -28,6 +28,11 @@
     })
 </script>
 
-<h1 class={style.root()} bind:this={element} use:editableText={block.text}>
+<h1
+    data-sf-block-id={block.blockId}
+    class={style.root()}
+    bind:this={element}
+    use:editableText={block.text}
+>
     <br />
 </h1>

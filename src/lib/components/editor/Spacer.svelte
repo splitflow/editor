@@ -53,6 +53,6 @@
     }
 </script>
 
-<p bind:this={element} class={style.root()}>
+<p data-sf-block-id={block.blockId} class={style.root()} bind:this={element}>
     <br />
 </p>

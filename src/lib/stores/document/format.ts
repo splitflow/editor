@@ -51,3 +51,10 @@ export function readFormat(format: FormatState): FormatData {
         ...result
     }
 }
+
+export function formatData(tagNames: string[]): FormatData {
+    return {
+        B: tagNames.includes('B'),
+        I: tagNames.includes('I')
+    }
+}

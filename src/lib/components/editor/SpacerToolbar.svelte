@@ -119,7 +119,7 @@
             {/if}
         </menu>
     {/if}
-    <p bind:this={element} contenteditable={!expanded}>
+    <p data-sf-block-id={block.blockId} contenteditable={!expanded} bind:this={element}>
         <br />
     </p>
 </div>
