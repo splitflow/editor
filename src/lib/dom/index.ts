@@ -1,3 +1,4 @@
+export * from './match'
 export * from './node'
 export * from './range'
 export * from './selection'

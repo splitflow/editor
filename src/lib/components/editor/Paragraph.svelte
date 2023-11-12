@@ -1,8 +1,8 @@
 <svelte:options immutable={true} />
 
 <script lang="ts">
-    import { getContext } from 'svelte'
-    import { createStyle } from '@splitflow/designer/svelte'
+    import { getContext, onMount } from 'svelte'
+    import { createConfig, createStyle } from '@splitflow/designer/svelte'
     import { EditorModule, flush, format } from '../../editor-module'
     import { windowSelectionRange } from '../../windowselection'
     import { createSpacerBlock, isEqual, key, type ParagraphNode } from '../../document'
@@ -15,8 +15,12 @@
         getBoundedSelectionRange
     } from '../../dom'
     import { formatData } from '../../stores/document/format'
+    import type { Behaviour } from '../../behaviours/highlight'
+    import highlight, { createBehaviourManager } from '../../behaviours/highlight'
+    import type { Config, Style } from '@splitflow/designer'
 
     const style = createStyle('Paragraph')
+    const config = createConfig('Paragraph')
 
     const editor = getContext<EditorModule>(EditorModule)
     const { format: formatStore } = editor.stores
@@ -28,6 +32,12 @@
 
     export function getElement() {
         return element
+    }
+
+    let _highlight = createBehaviourManager(highlight, style, editor)
+
+    $: {
+        $config.highlight.enabled() ? _highlight.update(element, $config) : _highlight.destroy()
     }
 
     $: {
@@ -69,6 +79,8 @@
     })
 
     export function keydown(event: KeyboardEvent) {
+        _highlight?.keydown?.(event)
+
         if (event.key === 'Backspace') {
             requestAnimationFrame(() => {
                 // element might be undefined if paragraph was deleted
