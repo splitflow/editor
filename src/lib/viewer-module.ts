@@ -7,6 +7,7 @@ import { createDesigner, type SplitflowDesigner } from '@splitflow/designer'
 import gateway from './services/gateway'
 import { storage } from './services/storage'
 import { firstError, type Error } from '@splitflow/lib'
+import { createExtensionManager, type ExtensionMananger } from './extension'
 
 interface Stores {
     fragments: FragmentsStore
@@ -31,6 +32,7 @@ export function createViewer(config?: ViewerConfig, app?: SplitflowApp) {
     config = { ...app.config, moduleName: 'editor', ...config }
 
     const designer = createDesigner({ ...config, remote: true }, undefined, undefined, app.designer)
+    const extension = createExtensionManager()
 
     let fragments: FragmentsStore
 
@@ -44,23 +46,26 @@ export function createViewer(config?: ViewerConfig, app?: SplitflowApp) {
         storage: config.local ? storage(fragments, config.documentId) : undefined
     }
 
-    return new ViewerModule(designer, stores, services, config)
+    return new ViewerModule(designer, extension, stores, services, config)
 }
 
 export class ViewerModule {
     constructor(
         designer: SplitflowDesigner,
+        extension: ExtensionMananger,
         stores: Stores,
         services: Services,
         config: ViewerConfig
     ) {
         this.designer = designer
+        this.extension = extension,
         this.stores = stores
         this.services = services
         this.config = config
     }
 
     designer: SplitflowDesigner
+    extension: ExtensionMananger
     stores: Stores
     services: Services
     config: ViewerConfig

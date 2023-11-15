@@ -1,7 +1,7 @@
 <svelte:options immutable={true} />
 
 <script lang="ts">
-    import { getContext, onMount } from 'svelte'
+    import { getContext } from 'svelte'
     import { createConfig, createStyle } from '@splitflow/designer/svelte'
     import { EditorModule, flush, format } from '../../editor-module'
     import { windowSelectionRange } from '../../windowselection'
@@ -15,9 +15,7 @@
         getBoundedSelectionRange
     } from '../../dom'
     import { formatData } from '../../stores/document/format'
-    import type { Behaviour } from '../../behaviours/highlight'
-    import highlight, { createBehaviourManager } from '../../behaviours/highlight'
-    import type { Config, Style } from '@splitflow/designer'
+    import { activateComponentExtensions, blockExtension } from '../../extension'
 
     const style = createStyle('Paragraph')
     const config = createConfig('Paragraph')
@@ -34,15 +32,13 @@
         return element
     }
 
-    let _highlight = createBehaviourManager(highlight, style, editor)
+    const extensions = activateComponentExtensions(
+        editor.extension.match(blockExtension('paragraph')),
+        { editor, style, config },
+        true
+    )
 
-    $: {
-        $config.highlight.enabled() ? _highlight.update(element, $config) : _highlight.destroy()
-    }
-
-    $: {
-        console.log('P BLOCK update' + block.markdown)
-    }
+    $: $extensions.forEach(({ activation }) => (activation.element = element))
 
     windowSelectionRange(() => {
         const range = getBoundedSelectionRange(element)
@@ -79,7 +75,7 @@
     })
 
     export function keydown(event: KeyboardEvent) {
-        _highlight?.keydown?.(event)
+        $extensions.forEach(({ activation }) => activation.keydown(event))
 
         if (event.key === 'Backspace') {
             requestAnimationFrame(() => {

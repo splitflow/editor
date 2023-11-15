@@ -5,11 +5,18 @@
     import { createHeaderBlock, createImageBlock, createParagraphBlock, key } from '../../document'
     import { readFormat } from '../../stores/document/format'
     import { readBlockType, readSelection } from '../../stores/document/selection'
+    import { activateComponentExtensions, toolbarExtension } from '../../extension'
 
     const style = createStyle('Toolbar')
     const config = createConfig('Toolbar')
 
     const editor = getContext<EditorModule>(EditorModule)
+
+    const extensions = activateComponentExtensions(
+        editor.extension.match(toolbarExtension('main')),
+        { editor, style, config }
+    )
+
     const { selection, format, fragments } = editor.stores
 
     $: formatData = readFormat($format)
@@ -92,4 +99,12 @@
             />
         </button>
     {/if}
+    {#each $extensions as { extension, activation }}
+        <button
+            class={style.button({ [extension.name]: true })}
+            on:mousedown|preventDefault={() => activation.run()}
+        >
+            <svg use:svg={$config[extension.name].svg(extension.svg)} />
+        </button>
+    {/each}
 </menu>

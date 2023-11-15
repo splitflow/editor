@@ -12,7 +12,8 @@
         parseKey,
         isSpacerNode,
         createSpacerBlock,
-        isListItemNode
+        isListItemNode,
+        isPromptNode
     } from '../../document'
     import {
         findAncestorRootChild,
@@ -30,12 +31,19 @@
     import ListItem from './ListItem.svelte'
     import Spacer from './Spacer.svelte'
     import { createSelectionSnapshot } from '../../selection-snapshot'
+    import { activateComponentExtensions, type EditableExtension } from '../../extension'
+    import Prompt from './Prompt.svelte'
 
     const style = createStyle('Editable')
     const config = createConfig('Editable')
 
     const editor = getContext<EditorModule>(EditorModule)
     const { fragments, document, selection, dragndrop } = editor.stores
+
+    const extensions = activateComponentExtensions(
+        editor.extension.get<EditableExtension>('editable'),
+        { editor, style, config }
+    )
 
     $: console.log($document)
     let element: HTMLElement
@@ -85,7 +93,7 @@
 
     snapshotSelection((action) => {
         const record = action.block ? $registry.getRecord(action.block) : undefined
-        return { snapshot: createSelectionSnapshot(record?.element ?? element/*, action*/) }
+        return { snapshot: createSelectionSnapshot(record?.element ?? element /*, action*/) }
     })
 
     function keydown(event: KeyboardEvent) {
@@ -238,8 +246,13 @@
             {/if}
         {:else}
             {@const block = record.block}
+            {@const extension = $extensions.find(
+                ({ extension }) => extension.blockType === block.blockType
+            )}
 
-            {#if isParagraphNode(block)}
+            {#if extension}
+                <svelte:component this={extension.extension.component} {block} bind:this={record.component} />
+            {:else if isParagraphNode(block)}
                 <Paragraph {block} bind:this={record.component} />
             {:else if isHeaderNode(block)}
                 <Header {block} bind:this={record.component} />
@@ -251,6 +264,8 @@
                 {:else}
                     <Spacer {block} bind:this={record.component} />
                 {/if}
+            {:else if isPromptNode(block)}
+                <Prompt {block} bind:this={record.component} />
             {/if}
         {/if}
     {/each}

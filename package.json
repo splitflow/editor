@@ -56,7 +56,7 @@
   },
   "dependencies": {
     "@splitflow/app": "^1.1.0",
-    "@splitflow/core": "^2.1.0",
+    "@splitflow/core": "file:../core",
     "@splitflow/css-reset": "^1.1.0",
     "@splitflow/designer": "^2.1.0",
     "@splitflow/lib": "^1.1.0"

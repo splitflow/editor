@@ -1,5 +1,5 @@
 import { writable, type Readable } from 'svelte/store'
-import { merge } from '@splitflow/core/utils'
+import { merge, mergeWithOption } from '@splitflow/core/utils'
 import {
     key,
     data as blockData,
@@ -9,43 +9,46 @@ import {
     insertPosition
 } from '../../document'
 import type { FragmentsStore } from './fragments'
+import type { ShadowStore } from './shadow'
 
 export interface DocumentStore extends Readable<BlockNode[]> {
-    insertAfter: (block: BlockNode, beforeBlock: BlockNode | BlockNode[]) => void
-    insertAfterPosition: (block: BlockNode) => number
-    insertBeforePosition: (block: BlockNode) => number
+    first(blocks: BlockNode[]): BlockNode
+    last(blocks: BlockNode[]): BlockNode
+    insertAfter(block: BlockNode, beforeBlock: BlockNode | BlockNode[]): void
+    insertAfterPosition(block: BlockNode | BlockNode[]): number
+    insertBeforePosition(block: BlockNode | BlockNode[]): number
 }
 
 interface SnapshotNode {
     [key: string]: BlockNode
 }
 
-export default function createDocumentStore(fragments: FragmentsStore): DocumentStore {
-    let snapshot: SnapshotNode = {}
+export default function createDocumentStore(
+    fragments: FragmentsStore,
+    shadow?: ShadowStore
+): DocumentStore {
     let value: BlockNode[]
+    let fragmentsSnapshot: SnapshotNode
+    let shadowSnapshot: SnapshotNode
     let position = 0
     let synced = false
 
     const { subscribe } = writable<BlockNode[]>(value, (set) => {
-        const unsubscribe = fragments.subscribe(($fragments) => {
-            let newFragments = $fragments.slice(position)
-            if (newFragments.length === 0) {
-                // there are no new fragments
-                // server AST snapshot has been updated
-                // we have to recompute all AST fragments
-                newFragments = $fragments
-            }
-
-            const fragment = mergeASTFragments(newFragments)
-            snapshot = mergeSnapshot(snapshot, fragment)
+        const unsubscribe1 = fragments.subscribe(($fragments) => {
+            fragmentsSnapshot = snapshotFragments(fragmentsSnapshot, $fragments.slice(position))
             position = $fragments.length
+            set((value = fromSnapshots(fragmentsSnapshot, shadowSnapshot)))
+        })
 
-            set((value = Object.values(snapshot).sort(sortBlocks)))
+        const unsubscribe2 = shadow?.subscribe(($shadow) => {
+            shadowSnapshot = snapshotShadow(shadowSnapshot, $shadow)
+            set((value = fromSnapshots(fragmentsSnapshot, shadowSnapshot)))
         })
 
         synced = true
         return () => {
-            unsubscribe()
+            unsubscribe1()
+            unsubscribe2?.()
             synced = false
         }
     })
@@ -54,28 +57,32 @@ export default function createDocumentStore(fragments: FragmentsStore): Document
         if (!synced) subscribe(() => {})()
     }
 
-    function insertAfter(block: BlockNode, beforeBlock: BlockNode | BlockNode[]) {
-        sync()
-        beforeBlock = Array.isArray(beforeBlock) ? last(value, beforeBlock) : beforeBlock
-        const position = insertAfterPosition(value, beforeBlock)
-        fragments.push({ [key(block)]: blockData({ ...block, position }) })
-    }
-
-    function _insertAfterPosition(block: BlockNode) {
-        sync()
-        return insertAfterPosition(value, block)
-    }
-
-    function _insertBeforePosition(block: BlockNode) {
-        sync()
-        return insertBeforePosition(value, block)
-    }
-
     return {
         subscribe,
-        insertAfter,
-        insertAfterPosition: _insertAfterPosition,
-        insertBeforePosition: _insertBeforePosition
+        first(blocks: BlockNode[]) {
+            sync()
+            return first(value, blocks)
+        },
+        last(blocks: BlockNode[]) {
+            sync()
+            return last(value, blocks)
+        },
+        insertAfter(block: BlockNode, beforeBlock: BlockNode | BlockNode[]) {
+            sync()
+            beforeBlock = Array.isArray(beforeBlock) ? last(value, beforeBlock) : beforeBlock
+            const position = insertAfterPosition(value, beforeBlock)
+            fragments.push({ [key(block)]: blockData({ ...block, position }) })
+        },
+        insertAfterPosition(block: BlockNode | BlockNode[]) {
+            sync()
+            block = Array.isArray(block) ? last(value, block) : block
+            return insertAfterPosition(value, block)
+        },
+        insertBeforePosition(block: BlockNode | BlockNode[]) {
+            sync()
+            block = Array.isArray(block) ? first(value, block) : block
+            return insertBeforePosition(value, block)
+        }
     }
 }
 
@@ -89,13 +96,24 @@ export function before(document: BlockNode[], block: BlockNode) {
     return index && document[index - 1]
 }
 
+export function first(document: BlockNode[], blocks: BlockNode[]) {
+    let first: BlockNode
+
+    for (const block of blocks) {
+        const [, docBloc] = findEntry(document, block)
+        if (docBloc.position < (first?.position ?? Number.MAX_SAFE_INTEGER)) {
+            first = docBloc
+        }
+    }
+    return first
+}
+
 export function last(document: BlockNode[], blocks: BlockNode[]) {
     let last: BlockNode
 
     for (const block of blocks) {
         const [, docBloc] = findEntry(document, block)
         if (docBloc.position > (last?.position ?? 0)) {
-            console.log('LAST')
             last = docBloc
         }
     }
@@ -112,41 +130,80 @@ export function insertBeforePosition(document: BlockNode[], block: BlockNode) {
     return insertPosition(document[index - 1]?.position, document[index]?.position)
 }
 
-function mergeASTFragments(fragments: DocumentNode[]): DocumentNode {
-    if (fragments.length === 0) return null
-    if (fragments.length === 1) return fragments[0]
-    return fragments.reduce(merge, {})
+function snapshotFragments(snapshot: SnapshotNode, fragments: DocumentNode[]) {
+    const result = fragments.reduce<SnapshotNode>(
+        mergeWithOption({ deleteNullProps: true, forceUpdate: true }),
+        snapshot
+    )
+
+    for (const [key, block] of Object.entries(result)) {
+        if (block && (!block.blockId || !block.blockType)) {
+            const { blockId, blockType } = parseKey(key)
+            result[key] = { ...block, blockId, blockType }
+        }
+    }
+    return result
+}
+
+function snapshotShadow(snapshot: SnapshotNode, fragment: DocumentNode) {
+    if (!fragment) return undefined
+
+    const result = merge(snapshot, fragment)
+    for (const [key, block] of Object.entries(result)) {
+        if (block && (!block.blockId || !block.blockType)) {
+            const { blockId, blockType } = parseKey(key)
+            result[key] = { ...block, blockId, blockType }
+        }
+    }
+    return result
+}
+
+function fromSnapshots(fragmentsSnapshot: SnapshotNode, shadowSnapshot: SnapshotNode) {
+    const snapshot = merge(fragmentsSnapshot, shadowSnapshot, { deleteNullProps: true })
+    return Object.values(snapshot).sort(sortBlocks)
 }
 
 /**
  * The merge operation mutates bocks only if they have modified properties
  * We force mutate to make sure we re-sync svelte components with the block data
- * Snapshot blocks which are not modified keep the same object instance, 
+ * Snapshot blocks which are not modified keep the same object instance,
  * and so the svelte component marked with <svelte:options immutable={true} /> will not trigger an update.
  */
-function mergeSnapshot(snapshot: SnapshotNode, fragment: DocumentNode) {
-    if (!fragment) return snapshot
+function mergeSnapshot(snapshot: SnapshotNode, fragment: DocumentNode, shadow: DocumentNode) {
+    let result = snapshot ?? {}
 
-    for (const block of Object.values(fragment)) {
-        // force mutate
-        if (block) block._force = true
-    }
-
-    const result = merge(snapshot, fragment as any, {
-        deleteNullProps: true
-    }) as SnapshotNode
-
-    for (const [key, block] of Object.entries(result)) {
-        if (!block.blockId || !block.blockType) {
-            // mutate only newly created blocks
-            const { blockId, blockType } = parseKey(key)
-            block.blockId = blockId
-            block.blockType = blockType
+    if (fragment) {
+        for (const blockData of Object.values(fragment)) {
+            // force mutate
+            if (blockData) blockData._force = true
         }
 
+        result = merge(result, fragment, {
+            deleteNullProps: true
+        }) as SnapshotNode
+    }
+
+    if (shadow) {
+        for (const blockData of Object.values(shadow)) {
+            // force mutate
+            if (blockData) blockData._force = true
+        }
+
+        result = merge(result, shadow, {
+            deleteNullProps: true
+        }) as SnapshotNode
+    }
+
+    for (const [key, block] of Object.entries(result)) {
         if ((block as any)._force) {
             // clesn up
             delete (block as any)._force
+        }
+
+        if (!block.blockId || !block.blockType) {
+            // convert new blockData in block
+            const { blockId, blockType } = parseKey(key)
+            result[key] = { ...block, blockId, blockType }
         }
     }
     return result

@@ -19,6 +19,14 @@ export interface SpacerNode {
     text: string
 }
 
+export interface PromptNode {
+    blockType: 'prompt'
+    blockId: string
+    position: number
+    placeholder: string
+    run: (value: string, block: PromptNode) => void
+}
+
 export interface ParagraphNode {
     blockType: 'paragraph'
     blockId: string
@@ -69,6 +77,19 @@ export function createSpacerBlock(): SpacerNode {
     }
 }
 
+export function createPromptBlock(
+    placeholder = '',
+    run: (value: string, block: PromptNode) => void
+): PromptNode {
+    return {
+        blockType: 'prompt',
+        blockId: crypto.randomUUID(),
+        position: 10e8,
+        placeholder,
+        run
+    }
+}
+
 export function createParagraphBlock(markdown = '', position = 10e8): ParagraphNode {
     return {
         blockType: 'paragraph',
@@ -112,6 +133,10 @@ export function isBlockNode(block: any): block is BlockNode {
 
 export function isSpacerNode(block: BlockNode): block is SpacerNode {
     return block?.blockType === 'spacer'
+}
+
+export function isPromptNode(block: BlockNode): block is PromptNode {
+    return block?.blockType === 'prompt'
 }
 
 export function isParagraphNode(block: BlockNode): block is ParagraphNode {

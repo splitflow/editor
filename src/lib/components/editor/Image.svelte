@@ -20,15 +20,14 @@
     $: selected = !!$selection?.[key(block)]
 </script>
 
-<div
-    data-sf-block-id={block.blockId}
-    draggable="true"
-    style={selected ? 'background: blue;' : ''}
-    bind:this={element}
->
+<div data-sf-block-id={block.blockId} draggable="true" bind:this={element}>
     <span><br /></span>
-    <figure class={style.root()} contenteditable="false">
-        <img draggable="false" alt="" src={block.src} />
+    <figure
+        class={style.root()}
+        style={selected ? 'background: blue;' : ''}
+        contenteditable="false"
+    >
+        <img class={style.image()} draggable="false" alt="" src={block.src} />
     </figure>
 </div>
 
