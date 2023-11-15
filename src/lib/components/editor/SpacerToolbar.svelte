@@ -12,7 +12,7 @@
     } from '../../document'
     import { EditorModule, flush } from '../../editor-module'
     import { cloneNode } from '../../dom'
-    import { activateExtensions, toolbarExtension } from '../../extension'
+    import { activateComponentExtensions, toolbarExtension } from '../../extension'
 
     const style = createStyle('SpacerToolbar')
     const config = createConfig('SpacerToolbar')
@@ -25,9 +25,12 @@
     }
 
     const editor = getContext<EditorModule>(EditorModule)
-    const extensions = activateExtensions(editor.extension.get(toolbarExtension('spacer')), editor)
-
     const { selection, fragments } = editor.stores
+
+    const extensions = activateComponentExtensions(
+        editor.extension.match(toolbarExtension('spacer')),
+        { editor, style, config }
+    )
 
     let prompt: string
     $: selected = !!$selection?.[key(block)]
@@ -120,11 +123,11 @@
                     />
                 </button>
             {/if}
-            {#each extensions as extension}
+            {#each $extensions as { extension, activation }}
                 {#if $config[extension.name].enabled()}
                     <button
                         class={style.button({ [extension.name]: true })}
-                        on:mousedown|preventDefault={() => extension.run()}
+                        on:mousedown|preventDefault={() => activation.run()}
                     >
                         <svg use:svg={$config[extension.name].svg(extension.svg)} />
                     </button>

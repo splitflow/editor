@@ -64,15 +64,6 @@ export interface ViewerExtension {
     component: any
 }
 
-export function toolbarExtensions(extensions: Extension[]) {
-    return extensions as ToolbarExtension[]
-}
-
-export function activateExtension<U, V>(extension: { activate: (context: U) => V }, context: U) {
-    const body = extension.activate(context)
-    return body
-}
-
 interface ComponentExtension {
     type: string
     name: string
@@ -83,83 +74,57 @@ interface ComponentExtension {
 export function activateComponentExtensions<V extends ComponentExtension>(
     extensions: V[],
     { editor, style, config }: { editor: EditorModule; style: Style; config: Readable<Config> },
-    activateOnMount?: boolean
+    activateOnMount = false
 ): Readable<{ extension: V; activation?: ReturnType<V['activate']> }[]> {
+    let _mounted = false
+    let _config: Config
     const activations = new Map<string, ReturnType<V['activate']>>()
 
-    const { subscribe } = writable([], (set) => {
+    onMount(() => {
+        _mounted = true
+        if (activateOnMount && _config) {
+            set(activate(_config))
+        }
+    })
+
+    const { subscribe, set } = writable([], () => {
         const unsubscribe = config.subscribe(($config) => {
-            const result = []
-
-            for (const extension of extensions) {
-                if ($config[extension.name].enabled()) {
-                    if (extension.activate) {
-                        let activation = activations.get(extension.name)
-                        if (activation) {
-                            activation.config = $config
-                        } else {
-                            activation = extension.activate(editor, style, $config)
-                            activations.set(extension.name, activation)
-                        }
-                        result.push({ extension, activation })
-                    } else {
-                        result.push({ extension })
-                    }
-                } else {
-                    if (extension.activate) {
-                        const activation = activations.get(extension.name)
-                        activation?.destroy?.()
-                    }
-                }
+            _config = $config
+            if (!activateOnMount || _mounted) {
+                set(activate(_config))
             }
-
-            set(result)
         })
 
         return () => unsubscribe()
     })
 
-    return { subscribe }
-}
-
-export function activateComponentExtensions2<U, V>(
-    extensions: { activate: (context: U) => V }[],
-    context: U,
-    activateOnMount?: boolean
-): V[] {
-    let bodies: V[]
-
-    if (activateOnMount) {
-        onMount(() => {
-            bodies = extensions.map((e) => e.activate(context))
-        })
-    } else {
-        bodies = extensions.map((e) => e.activate(context))
-    }
-
-    if (activateOnMount) {
-        return {
-            *[Symbol.iterator]() {
-                for (const body of bodies) yield body
-            },
-            forEach(callbackFn: (value: V, index: number, array: V[]) => void) {
-                for (const [index, body] of bodies.entries()) callbackFn(body, index, bodies)
+    function activate(config: Config) {
+        const result = []
+        for (const extension of extensions) {
+            if (config[extension.name].enabled()) {
+                if (extension.activate) {
+                    let activation = activations.get(extension.name)
+                    if (activation) {
+                        activation.config = config
+                    } else {
+                        activation = extension.activate(editor, style, config)
+                        activations.set(extension.name, activation)
+                    }
+                    result.push({ extension, activation })
+                } else {
+                    result.push({ extension })
+                }
+            } else {
+                if (extension.activate) {
+                    const activation = activations.get(extension.name)
+                    activation?.destroy?.()
+                }
             }
-        } as V[]
+        }
+        return result
     }
-    return bodies
-}
 
-export function activateExtensions<T>(
-    extensions: { activate: (editor: EditorModule) => T }[],
-    editor: EditorModule
-) {
-    const bodies: T[] = []
-
-    for (const extension of extensions) {
-        bodies.push(extension.activate(editor))
-    }
-    return bodies
+    return { subscribe }
 }
 
 export interface ExtensionMatcher<T> {

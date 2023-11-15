@@ -11,13 +11,12 @@
     const config = createConfig('Toolbar')
 
     const editor = getContext<EditorModule>(EditorModule)
+    const { selection, format, fragments } = editor.stores
 
     const extensions = activateComponentExtensions(
         editor.extension.match(toolbarExtension('main')),
         { editor, style, config }
     )
-
-    const { selection, format, fragments } = editor.stores
 
     $: formatData = readFormat($format)
     $: blockTypeData = readBlockType($selection)

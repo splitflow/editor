@@ -19,7 +19,7 @@ export interface EmbedNode {
     height?: number
 }
 
-function createEmbedBlock(url: string): EmbedNode {
+export function createEmbedBlock(url: string): EmbedNode {
     return {
         blockType: 'embed',
         blockId: crypto.randomUUID(),
@@ -39,7 +39,6 @@ export default function embed(
         return {
             run() {
                 editor.prompt('copy a link', (prompt, block) => {
-                    console.log('RUN' + prompt)
                     const embedBlock = createEmbedBlock(prompt)
                     editor.replace(block, embedBlock, { shadow: true })
 
