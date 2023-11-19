@@ -7,10 +7,10 @@ export interface ResolverResult {
 
 export function resolver(providers: any[]) {
     return async (url: string): Promise<ResolverResult> => {
-        const endpoint = getEndpointUrl(providers, url)
+        const endpoint = getEndpoint(providers, url)
 
         if (endpoint) {
-            const endpointUrl = new URL(endpoint.replace('{format}', 'json'))
+            const endpointUrl = new URL(endpoint.url.replace('{format}', 'json'))
             endpointUrl.searchParams.set('url', url)
             endpointUrl.searchParams.set('format', 'json')
             endpointUrl.searchParams.set('maxwidth', '640')
@@ -18,7 +18,8 @@ export function resolver(providers: any[]) {
 
             const response = await fetch(endpointUrl)
             if (response.status === 200) {
-                return response.json()
+                const result = await response.json()
+                return endpoint.apply?.(result) ?? result
             }
             throw new Error(`Failed to resolve oembed url ${url}`)
         }
@@ -35,12 +36,12 @@ export function resolverWithProviders(providerNames?: string[]) {
     return resolver(PROVIDERS)
 }
 
-function getEndpointUrl(providers: any[], url: string) {
+function getEndpoint(providers: any[], url: string) {
     for (const provider of providers) {
         for (const endpoint of provider.endpoints) {
             for (const scheme of endpoint.schemes) {
                 const schemeRegexp = new RegExp(scheme.replaceAll('*', '[^./]+'))
-                if (schemeRegexp.exec(url)) return endpoint.url
+                if (schemeRegexp.exec(url)) return endpoint
             }
         }
     }
@@ -103,8 +104,9 @@ const PROVIDERS = [
         endpoints: [
             {
                 schemes: ['https://www.tiktok.com/*', 'https://www.tiktok.com/*/video/*'],
-                url: 'https://www.tiktok.com/oembed'
+                url: 'https://www.tiktok.com/oembed',
+                apply: ((result: any) => ({...result, width: 335, height: 900}))
             }
-        ]
+        ],
     }
 ]

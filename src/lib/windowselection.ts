@@ -29,3 +29,25 @@ export function windowSelectionRange(listener: (selectionRange: Range) => void) 
         }
     })
 }
+
+export function debounceSelectionChange(listener: () => void) {
+    let startContainer: Node
+    let endContainer: Node
+    let collapsed: boolean
+
+    return () => {
+        const selection = window.getSelection()
+        const selectionRange = selection.getRangeAt(0)
+
+        if (
+            selectionRange.startContainer !== startContainer ||
+            selectionRange.endContainer !== endContainer ||
+            selectionRange.collapsed !== collapsed
+        ) {
+            startContainer = selectionRange.startContainer
+            endContainer = selectionRange.endContainer
+            collapsed = selectionRange.collapsed
+            listener()
+        }
+    }
+}
