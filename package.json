@@ -15,7 +15,9 @@
   "files": [
     "dist/**/*.js",
     "dist/**/*.cjs",
-    "dist/**/*.d.ts"
+    "dist/**/*.d.ts",
+    "src/svelte/**/*.js",
+    "src/svelte/**/*.svelte"
   ],
   "exports": {
     ".": {

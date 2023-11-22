@@ -82,6 +82,21 @@ export function getNodeRange(node: Node, options?: NodeOptions) {
     return nodeRange
 }
 
+export function insertNode(node: Node) {
+    const selection = window.getSelection()
+    const selectionRange = selection.getRangeAt(0)
+
+    if (selectionRange) {
+        selectionRange.deleteContents()
+        selectionRange.insertNode(node)
+        selectionRange.selectNodeContents(node)
+        selectionRange.collapse()
+
+        selection.removeAllRanges()
+        selection.addRange(selectionRange)
+    }
+}
+
 export function getBoundedSelectionRange(node: Node) {
     const selection = window.getSelection()
     const selectionRange = selection.getRangeAt(0)

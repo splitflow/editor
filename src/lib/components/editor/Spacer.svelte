@@ -51,6 +51,27 @@
             }
         }
     }
+
+    export function paste(event: ClipboardEvent) {
+        const text = event.clipboardData.getData('text/plain')
+        prompt = element.textContent + text
+
+        if (prompt.startsWith('1. ')) {
+            event.preventDefault()
+            editor.replace(block, createListItemBlock(prompt.slice(3), true))
+            return true
+        }
+        if (prompt.startsWith('- ')) {
+            event.preventDefault()
+            editor.replace(block, createListItemBlock(prompt.slice(2), false))
+            return true
+        }
+        if (!'1. '.startsWith(prompt) && !'- '.startsWith(prompt)) {
+            event.preventDefault()
+            editor.replace(block, createParagraphBlock(prompt))
+            return true
+        }
+    }
 </script>
 
 <p data-sf-block-id={block.blockId} class={style.root()} bind:this={element}>

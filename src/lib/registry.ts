@@ -22,6 +22,10 @@ export class BlockRecord {
     dispatchKeydown(event: KeyboardEvent) {
         return this.component.keydown?.(event) ?? false
     }
+
+    dispatchPaste(event: ClipboardEvent) {
+        return this.component.paste?.(event) ?? false
+    }
 }
 
 export class RecordGroup {
@@ -40,6 +44,7 @@ export interface BlockComponent {
     getElement: () => HTMLElement
     isVoid?: boolean
     keydown?: (event: KeyboardEvent) => boolean
+    paste?: (event: ClipboardEvent) => boolean
 }
 
 export function createDocumentRegistry(document: DocumentStore) {

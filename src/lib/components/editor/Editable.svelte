@@ -19,7 +19,8 @@
         findAncestorRootChild,
         isSelectionCollapsedAtEnd,
         isSelectionCollapsedAtStart,
-        setSelectionCollapsed
+        setSelectionCollapsed,
+        insertNode
     } from '../../dom'
     import { windowSelectionRange } from '../../windowselection'
     import { RecordGroup, createDocumentRegistry } from '../../registry'
@@ -98,6 +99,10 @@
 
     function keydown(event: KeyboardEvent) {
         if (
+            event.ctrlKey ||
+            event.metaKey ||
+            event.key === 'Control' ||
+            event.key === 'Meta' ||
             event.key === 'Tab' ||
             event.key === 'Shift' ||
             event.key === 'ArrowLeft' ||
@@ -132,7 +137,7 @@
                 editor.replace(record.block, createSpacerBlock())
                 return
             }
-            console.log('BACK')
+
             if (isSelectionCollapsedAtStart(record.element)) {
                 event.preventDefault()
                 console.log('COLLAPSED')
@@ -174,6 +179,31 @@
             event.preventDefault()
             return
         }
+    }
+
+    function paste(event: ClipboardEvent) {
+        event.preventDefault()
+
+        if (Object.keys($selection).length > 1) {
+            // multi block selection
+            editor.collapse(getSelectedBlocks())
+
+            const text = event.clipboardData.getData('text/plain')
+            requestAnimationFrame(() => {
+                // we need to wait for collapse after selection to occur
+                insertNode(window.document.createTextNode(text))
+            })
+            return
+        }
+
+        const record = first(getSelectedRecords())
+        if (record.dispatchPaste(event)) {
+            // event has been handled by the block component
+            return
+        }
+
+        const text = event.clipboardData.getData('text/plain')
+        insertNode(window.document.createTextNode(text))
     }
 
     function dragstart(event: DragEvent) {
@@ -220,6 +250,7 @@
     on:dragenter={dragenter}
     on:dragover={dragover}
     on:drop={drop}
+    on:paste={paste}
 >
     {#each registry2.read() as record (record.key)}
         {#if record instanceof RecordGroup}
@@ -251,7 +282,11 @@
             )}
 
             {#if extension}
-                <svelte:component this={extension.extension.component} {block} bind:this={record.component} />
+                <svelte:component
+                    this={extension.extension.component}
+                    {block}
+                    bind:this={record.component}
+                />
             {:else if isParagraphNode(block)}
                 <Paragraph {block} bind:this={record.component} />
             {:else if isHeaderNode(block)}
