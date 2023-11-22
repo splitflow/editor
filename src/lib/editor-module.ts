@@ -379,7 +379,7 @@ export class EditorModule {
         return result.promise
     }
 
-    prompt(placeholder: string, run: (value: string, block: BlockNode) => void) {
+    prompt(placeholder: string, run: (value: string) => void) {
         const action: PromptAction = { type: 'prompt', placeholder, run }
         this.dispatcher.dispatchAction(action, { discriminator: this })
     }
@@ -387,15 +387,6 @@ export class EditorModule {
     get document(): Readable<BlockNode[]> {
         return this.stores.document
     }
-}
-
-export function format(handler: (action: FormatAction) => Result) {
-    const editor = getContext<EditorModule>(EditorModule)
-
-    onMount(() => {
-        editor.dispatcher.addActionHandler('format', handler, editor)
-        return () => editor.dispatcher.removeActionHandler('format', handler, editor)
-    })
 }
 
 export function select(handler: (action: SelectAction) => SelectResult) {

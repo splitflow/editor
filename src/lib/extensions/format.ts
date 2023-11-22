@@ -2,8 +2,13 @@ import type { Result } from '@splitflow/app'
 import type { Style } from '@splitflow/designer'
 import { onMount } from 'svelte'
 import type { EditorModule, FormatAction } from '../editor-module'
-import { getBoundedSelectionRange, getRangeWrappers, unwrapRange, wrapRange } from '../dom'
-import { debounceSelectionChange } from '../windowselection'
+import {
+    debounceSelectionChange,
+    getBoundedSelectionRange,
+    getRangeWrappers,
+    unwrapRange,
+    wrapRange
+} from '../dom'
 import { key, type BlockNode } from '../document'
 import { formatData } from '../stores/document/format'
 

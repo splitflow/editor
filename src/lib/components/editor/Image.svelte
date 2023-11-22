@@ -2,32 +2,26 @@
     import { getContext } from 'svelte'
     import { createStyle } from '@splitflow/designer/svelte'
     import { EditorModule } from '../../editor-module'
-    import { key, type ImageNode } from '../../document'
-
-    export const isVoid = true
-    export let block: ImageNode
-    let element: HTMLElement
-
-    export function getElement() {
-        return element
-    }
+    import { type ImageNode } from '../../document'
+    import { isSelected } from '../../stores/document/selection'
 
     const style = createStyle('Image')
 
     const editor = getContext<EditorModule>(EditorModule)
     const { selection } = editor.stores
 
-    $: selected = !!$selection?.[key(block)]
+    export const isVoid = true
+    export let block: ImageNode
+    export const getElement = () => element
+    let element: HTMLElement
+
+    $: selected = isSelected($selection, block)
 </script>
 
-<div data-sf-block-id={block.blockId} draggable="true" bind:this={element}>
+<div data-sf-block-id={block.blockId} bind:this={element}>
     <span><br /></span>
-    <figure
-        class={style.root()}
-        style={selected ? 'background: blue;' : ''}
-        contenteditable="false"
-    >
-        <img class={style.image()} draggable="false" alt="" src={block.src} />
+    <figure class={style.root({ selected })} contenteditable="false">
+        <img class={style.image()} draggable="true" alt="" src={block.src} />
     </figure>
 </div>
 

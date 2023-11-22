@@ -33,9 +33,10 @@
 
         if (event.key === 'Enter') {
             event.preventDefault()
-            const prompt = element.textContent
+
+            const prompt = element.firstChild.textContent
             if (prompt) {
-                block.run(prompt, block)
+                block.run(prompt)
             } else {
                 const { block } = editor.shadow({ clear: true })
                 editor.select(block, { afterUpdate: true })
@@ -45,17 +46,32 @@
 
         requestAnimationFrame(() => {
             // element might be undefined if block was deleted
-            hasPrompt = element?.textContent !== ''
+            hasPrompt = element?.firstChild.textContent !== ''
+        })
+    }
+
+    export function paste(event: ClipboardEvent) {
+        if (!element.firstChild.textContent) {
+            event.preventDefault()
+
+            const prompt = event.clipboardData.getData('text/plain')
+            block.run(prompt)
+            return true
+        }
+
+        requestAnimationFrame(() => {
+            // element might be undefined if block was deleted
+            hasPrompt = element?.firstChild.textContent !== ''
         })
     }
 </script>
 
-<div>
-    <p data-sf-block-id={block.blockId} class={style.root()} bind:this={element}>
+<div data-sf-block-id={block.blockId} class={style.root()} bind:this={element}>
+    <p class={style.prompt()}>
         <br />
     </p>
     {#if !hasPrompt}
-        <span contenteditable="false">{block.placeholder}</span>
+        <span class={style.placeholder()} contenteditable="false">{block.placeholder}</span>
     {/if}
 </div>
 

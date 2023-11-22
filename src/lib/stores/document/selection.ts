@@ -102,3 +102,7 @@ export function createUnselect() {
         _selected = selected
     }
 }
+
+export function isSelected(state: SelectionState, block: BlockNode) {
+    return state[key(block)] ?? false
+}

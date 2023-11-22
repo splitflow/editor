@@ -24,7 +24,7 @@ export interface PromptNode {
     blockId: string
     position: number
     placeholder: string
-    run: (value: string, block: PromptNode) => void
+    run: (value: string) => void
 }
 
 export interface ParagraphNode {
@@ -79,7 +79,7 @@ export function createSpacerBlock(position = 10e8): SpacerNode {
 
 export function createPromptBlock(
     placeholder = '',
-    run: (value: string, block: PromptNode) => void,
+    run: (value: string) => void,
     position = 10e8
 ): PromptNode {
     return {

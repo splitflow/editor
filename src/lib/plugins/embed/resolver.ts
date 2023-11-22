@@ -105,8 +105,19 @@ const PROVIDERS = [
             {
                 schemes: ['https://www.tiktok.com/*', 'https://www.tiktok.com/*/video/*'],
                 url: 'https://www.tiktok.com/oembed',
-                apply: ((result: any) => ({...result, width: 335, height: 900}))
+                apply: (result: any) => ({ ...result, width: 335, height: 900 })
             }
-        ],
+        ]
+    },
+    {
+        provider_name: 'Spotify',
+        provider_url: 'https://spotify.com/',
+        endpoints: [
+            {
+                schemes: ['https://open.spotify.com/*', 'spotify:*'],
+                url: 'https://open.spotify.com/oembed',
+                discovery: true
+            }
+        ]
     }
 ]
