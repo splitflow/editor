@@ -1,3 +1,4 @@
+import { flush } from 'svelte/internal'
 import type { EditorModule } from '../../editor-module'
 import type {
     EditableExtension,
@@ -38,21 +39,20 @@ export default function embed(
     function activate(editor: EditorModule) {
         return {
             run() {
-                editor.prompt('copy a link', (prompt, block) => {
-                    const embedBlock = createEmbedBlock(prompt)
-                    editor.replace(block, embedBlock, { shadow: true })
-
+                editor.prompt('copy a link', (prompt) => {
                     resolve(prompt).then(
-                        ({ html, width, height, provider_name: provider }) => {
-                            editor.update(
-                                embedBlock,
-                                { html, width, height, provider },
-                                { shadow: true }
-                            )
-                            editor.shadow(undefined, { flush: true })
+                        ({ html, width, height, provider_name }) => {
+                            const embedBlock = createEmbedBlock(prompt)
+                            embedBlock.html = html
+                            embedBlock.width = width
+                            embedBlock.height = height
+                            embedBlock.provider = provider_name
+
+                            editor.shadow({ replace: embedBlock, flush: true })
                         },
                         (error: Error) => {
-                            editor.shadow(undefined, { clear: true })
+                            const { block } = editor.shadow({ clear: true })
+                            editor.select(block, { afterUpdate: true })
                             console.warn(error.message)
                         }
                     )

@@ -1,70 +1,66 @@
 <script lang="ts">
     import { createStyle } from '@splitflow/designer/svelte'
-    import { type PromptNode } from '../../document'
+    import { key, type PromptNode } from '../../document'
     import { isSelectionCollapsedAtStart } from '../../dom'
     import { getContext } from 'svelte'
     import { EditorModule } from '../../editor-module'
-
+    import { createUnselect } from '../../stores/document/selection'
 
     const style = createStyle('Prompt')
 
     const editor = getContext<EditorModule>(EditorModule)
+    const { selection } = editor.stores
 
     export let block: PromptNode
+    export const getElement = () => element
     let element: HTMLElement
 
-    export function getElement() {
-        return element
-    }
-
+    const unselect = createUnselect()
     let hasPrompt = false
 
-    export function keydown(event: KeyboardEvent) {
+    $: unselect($selection, block, () => editor.shadow({ clear: true }))
 
+    export function keydown(event: KeyboardEvent) {
         if (event.key === 'Backspace') {
-            console.log('BACK-')
             if (isSelectionCollapsedAtStart(element)) {
                 event.preventDefault()
-                console.log('START')
-                console.log(element.textContent)
-                console.log(element.textContent.length)
-                if (element.textContent === '') {
-                    console.log('CLEAR')
-                    editor.shadow(undefined, { clear: true })
-                } else {
-                    //editor.swap([block], createParagraphBlock())
-                }
+
+                const { block } = editor.shadow({ clear: true })
+                editor.select(block, { afterUpdate: true })
                 return true
             }
-        }
-
-        if (event.key.length == 1 && !event.metaKey && !event.ctrlKey) {
-            hasPrompt = true
-        }
-
-        if (event.key === 'Backspace') {
-            console.log(element.textContent)
-            hasPrompt = element.textContent.length > 1
         }
 
         if (event.key === 'Enter') {
             event.preventDefault()
             const prompt = element.textContent
-            block.run(prompt, block)
+            if (prompt) {
+                block.run(prompt, block)
+            } else {
+                const { block } = editor.shadow({ clear: true })
+                editor.select(block, { afterUpdate: true })
+            }
             return true
         }
+
+        requestAnimationFrame(() => {
+            // element might be undefined if block was deleted
+            hasPrompt = element?.textContent !== ''
+        })
     }
 </script>
 
-<p data-sf-block-id={block.blockId} class={style.root()} bind:this={element}>
-    <br />
+<div>
+    <p data-sf-block-id={block.blockId} class={style.root()} bind:this={element}>
+        <br />
+    </p>
     {#if !hasPrompt}
         <span contenteditable="false">{block.placeholder}</span>
     {/if}
-</p>
+</div>
 
 <style>
-    p {
+    div {
         position: relative;
     }
 

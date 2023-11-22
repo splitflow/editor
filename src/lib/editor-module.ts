@@ -2,7 +2,7 @@ import { afterUpdate, getContext, onMount } from 'svelte'
 import createFragmentsStore, { type FragmentsStore } from './stores/document/fragments'
 import createDocumentStore, { type DocumentStore } from './stores/document/document'
 import createSelectionStore, { type SelectionStore } from './stores/document/selection'
-import { createPromptBlock, type BlockNode } from './document'
+import { type BlockNode, type BlockDataNode } from './document'
 import createFormatStore, { type FormatStore } from './stores/document/format'
 import createDragnDropStore, { type DragnDropStore } from './stores/document/dragndrop'
 import { mergeData, type MergeDataAction, type MergeResult } from './merge'
@@ -14,10 +14,11 @@ import type {
     BreaklineAction,
     SwapAction,
     InsertAction,
+    PromptAction,
     RemoveAction,
     ReplaceAction,
     ShadowAction,
-    UpdateAction
+    ShadowResult
 } from './actions'
 import { restoreSelectionSnapshot, type SelectionSnapshot } from './selection-snapshot'
 import type { Readable } from 'svelte/store'
@@ -115,7 +116,9 @@ export interface UpdateOptions {
 
 export interface ShadowOptions {
     block?: BlockNode
-    blockType?: string
+    shadow?: BlockNode
+    update?: BlockDataNode
+    replace?: BlockNode
     flush?: boolean
     clear?: boolean
 }
@@ -197,8 +200,8 @@ export class EditorModule {
         this.dispatcher.addActionHandler('insert', actions.insert, this)
         this.dispatcher.addActionHandler('remove', actions.remove, this)
         this.dispatcher.addActionHandler('replace', actions.replace, this)
-        this.dispatcher.addActionHandler('update', actions.update, this)
         this.dispatcher.addActionHandler('shadow', actions.shadow, this)
+        this.dispatcher.addActionHandler('prompt', actions.prompt, this)
         this.dispatcher.addActionHandler('mergedata', mergeData)
         this.dispatcher.addActionHandler('open', openFileDialog)
         this.dispatcher.addActionHandler('upload', uploadFile)
@@ -239,8 +242,8 @@ export class EditorModule {
         this.dispatcher.removeActionHandler('insert', actions.insert, this)
         this.dispatcher.removeActionHandler('remove', actions.remove, this)
         this.dispatcher.removeActionHandler('replace', actions.replace, this)
-        this.dispatcher.removeActionHandler('update', actions.update, this)
         this.dispatcher.removeActionHandler('shadow', actions.shadow, this)
+        this.dispatcher.removeActionHandler('prompt', actions.prompt, this)
         this.dispatcher.removeActionHandler('mergedata', mergeData)
         this.dispatcher.removeActionHandler('open', openFileDialog)
         this.dispatcher.removeActionHandler('upload', uploadFile)
@@ -357,14 +360,10 @@ export class EditorModule {
         this.dispatcher.dispatchAction(action, { discriminator: this })
     }
 
-    update<T extends BlockNode>(block: T, blockData: Partial<T>, options?: UpdateOptions) {
-        const action: UpdateAction = { type: 'update', block, blockData, ...options }
-        this.dispatcher.dispatchAction(action, { discriminator: this })
-    }
-
-    shadow(shadow: BlockNode, options?: ShadowOptions) {
-        const action: ShadowAction = { type: 'shadow', shadow, ...options }
-        this.dispatcher.dispatchAction(action, { discriminator: this })
+    shadow(options?: ShadowOptions) {
+        const action: ShadowAction = { type: 'shadow', ...options }
+        const result = this.dispatcher.dispatchAction(action, { discriminator: this })
+        return result as ShadowResult
     }
 
     openFileDialog(accept: string, close?: (file: File) => void) {
@@ -381,8 +380,8 @@ export class EditorModule {
     }
 
     prompt(placeholder: string, run: (value: string, block: BlockNode) => void) {
-        const promptBlock = createPromptBlock(placeholder, run)
-        this.shadow(promptBlock, { blockType: 'spacer' })
+        const action: PromptAction = { type: 'prompt', placeholder, run }
+        this.dispatcher.dispatchAction(action, { discriminator: this })
     }
 
     get document(): Readable<BlockNode[]> {

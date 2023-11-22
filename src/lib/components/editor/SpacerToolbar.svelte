@@ -37,6 +37,7 @@
     $: open = selected && !prompt
     $: expanded = !open ? false : expanded ?? false
 
+
     function uploadImage() {
         editor.openFileDialog('image/*', (file: File) => {
             if (!file) return

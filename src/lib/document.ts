@@ -68,23 +68,24 @@ export function createBlock<T extends BlockNode>(
     }
 }
 
-export function createSpacerBlock(): SpacerNode {
+export function createSpacerBlock(position = 10e8): SpacerNode {
     return {
         blockType: 'spacer',
         blockId: crypto.randomUUID(),
-        position: 10e8,
+        position,
         text: ''
     }
 }
 
 export function createPromptBlock(
     placeholder = '',
-    run: (value: string, block: PromptNode) => void
+    run: (value: string, block: PromptNode) => void,
+    position = 10e8
 ): PromptNode {
     return {
         blockType: 'prompt',
         blockId: crypto.randomUUID(),
-        position: 10e8,
+        position,
         placeholder,
         run
     }

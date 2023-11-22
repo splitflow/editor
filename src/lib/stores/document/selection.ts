@@ -90,3 +90,15 @@ export function readBlockType(state: SelectionState): BlockTypeData {
 
     return result
 }
+
+export function createUnselect() {
+    let _selected = false
+
+    return (state: SelectionState, block: BlockNode, run: () => void) => {
+        const selected = state[key(block)] ?? false
+        if (selected === false && _selected === true) {
+            run()
+        }
+        _selected = selected
+    }
+}

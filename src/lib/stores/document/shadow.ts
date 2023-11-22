@@ -1,12 +1,13 @@
 import { merge as mergeObject, type MergeOption } from '@splitflow/core/utils'
 import { writable, type Readable } from 'svelte/store'
-import type { DocumentNode } from '../../document'
+import { parseKey, type DocumentNode, type BlockNode } from '../../document'
 import type { FragmentsStore } from './fragments'
 
 export interface ShadowStore extends Readable<DocumentNode> {
-    merge(node: DocumentNode): void
+    merge(node: DocumentNode, options?: MergeOption): void
     clear(): void
     flush(): void
+    read(shadowed?: boolean): BlockNode[]
 }
 
 export default function createShadowStore(fragments: FragmentsStore): ShadowStore {
@@ -27,5 +28,23 @@ export default function createShadowStore(fragments: FragmentsStore): ShadowStor
         set((value = undefined))
     }
 
-    return { subscribe, merge, clear, flush }
+    function read(shadowed = false) {
+        return readShadow(value, shadowed)
+    }
+
+    return { subscribe, merge, clear, flush, read }
+}
+
+export function readShadow(value: DocumentNode, shadowed: boolean) {
+    if (!value) return []
+
+    if (shadowed) {
+        return Object.entries(value)
+            .filter(([, data]) => data === null)
+            .map(([key]) => parseKey(key))
+    }
+
+    return Object.entries(value)
+        .filter(([, data]) => !!data)
+        .map(([key, data]) => ({ ...parseKey(key), ...data }))
 }

@@ -6,8 +6,9 @@ import {
     data,
     createBlock,
     type BlockNode,
+    type BlockDataNode,
     createPromptBlock,
-    type BlockDataNode
+    createSpacerBlock
 } from './document'
 import { EditorModule } from './editor-module'
 
@@ -181,68 +182,43 @@ export interface ReplaceAction {
     type: 'replace'
     block1: BlockNode
     block2: BlockNode
-    shadow?: boolean
 }
 
 export function replace(action: ReplaceAction, editor: EditorModule): Result {
     const { block1, block2 } = action
-
     const replaceBlock = { ...block2, position: block1.position }
 
-    if (action.shadow) {
-        editor.stores.shadow.merge({
-            [key(block1)]: null,
-            [key(replaceBlock)]: data(replaceBlock)
-        })
-    } else {
-        editor.stores.fragments.push({
-            [key(block1)]: null,
-            [key(replaceBlock)]: data(replaceBlock)
-        })
-    }
+    editor.stores.fragments.push({
+        [key(block1)]: null,
+        [key(replaceBlock)]: data(replaceBlock)
+    })
+
     editor.select(replaceBlock, { afterUpdate: true })
-    return {}
-}
-
-export interface UpdateAction {
-    type: 'update'
-    block: BlockNode
-    blockData: BlockDataNode
-    shadow?: boolean
-}
-
-export function update(action: UpdateAction, editor: EditorModule): Result {
-    const { block, blockData } = action
-
-    if (action.shadow) {
-        editor.stores.shadow.merge({ [key(block)]: blockData })
-    } else {
-        editor.stores.fragments.push({ [key(block)]: blockData })
-    }
     return {}
 }
 
 export interface ShadowAction {
     type: 'shadow'
-    shadow: BlockNode
     block?: BlockNode
-    blockType?: string
+    shadow?: BlockNode
+    update?: BlockDataNode
+    replace?: BlockNode
     flush?: boolean
     clear?: boolean
 }
 
-export function shadow(action: ShadowAction, editor: EditorModule): Result {
-    if (action.flush) {
-        editor.stores.shadow.flush()
-        return {}
-    }
+export interface ShadowResult {
+    block?: BlockNode
+}
 
+export function shadow(action: ShadowAction, editor: EditorModule): ShadowResult {
     if (action.clear) {
+        const block = first(editor.stores.shadow.read(true))
         editor.stores.shadow.clear()
-        return {}
+        return { block }
     }
 
-    if (action.block) {
+    if (action.block && action.shadow) {
         const { block, shadow } = action
         const shadowBlock = { ...shadow, position: block.position }
 
@@ -250,33 +226,77 @@ export function shadow(action: ShadowAction, editor: EditorModule): Result {
             [key(block)]: null,
             [key(shadowBlock)]: data(shadowBlock)
         })
+        editor.select(shadowBlock, { afterUpdate: true })
         return {}
     }
 
-    if (action.blockType) {
-        const { blockType, shadow } = action
-        const selection = editor.stores.selection.read()
-        const block = editor.stores.document.first(
-            selection.filter((b) => b.blockType === blockType)
-        )
+    if (action.update) {
+        const { update } = action
+        const shadow = first(editor.stores.shadow.read())
 
-        if (block) {
-            const shadowBlock = { ...shadow, position: block.position }
+        editor.stores.shadow.merge({
+            [key(shadow)]: update
+        })
 
-            editor.stores.shadow.merge({
-                [key(block)]: null,
-                [key(shadowBlock)]: data(shadowBlock)
-            })
-            return {}
+        if (action.flush) {
+            editor.stores.shadow.flush()
         }
+
+        return {}
     }
 
+    if (action.replace) {
+        const { replace } = action
+        const shadow = first(editor.stores.shadow.read())
+        const replaceShadowBlock = { ...replace, position: shadow.position }
+
+        editor.stores.shadow.merge({
+            [key(shadow)]: null,
+            [key(replaceShadowBlock)]: data(replaceShadowBlock)
+        })
+
+        if (action.flush) {
+            editor.stores.shadow.flush()
+        }
+
+        return {}
+    }
+
+    if (action.flush) {
+        editor.stores.shadow.flush()
+        return {}
+    }
+
+    return {}
+}
+
+export interface PromptAction {
+    type: 'prompt'
+    placeholder: string
+    run: (value: string, block: BlockNode) => void
+}
+
+export function prompt(action: PromptAction, editor: EditorModule): Result {
+    const { placeholder, run } = action
+
     const selection = editor.stores.selection.read()
-    const position = editor.stores.document.insertAfterPosition(selection)
-    const shadowBlock = { ...action.shadow, position }
+    let spacerBlock = editor.stores.document.first(
+        selection.filter((b) => b.blockType === 'spacer')
+    )
+
+    if (!spacerBlock) {
+        const position = editor.stores.document.insertAfterPosition(selection)
+        spacerBlock = createSpacerBlock(position)
+        editor.stores.fragments.push({
+            [key(spacerBlock)]: data(spacerBlock)
+        })
+    }
+
+    const promptBlock = createPromptBlock(placeholder, run, spacerBlock.position)
     editor.stores.shadow.merge({
-        [key(shadowBlock)]: data(shadowBlock)
+        [key(spacerBlock)]: null,
+        [key(promptBlock)]: data(promptBlock)
     })
-    editor.select(shadowBlock, { afterUpdate: true })
+    editor.select(promptBlock, { afterUpdate: true })
     return {}
 }
