@@ -82,18 +82,15 @@ export function collapse(action: CollapseAction, editor: EditorModule): Result {
     const firstBlock = editor.flush(first(action.selection), { beforeSelection: true })
     const lastBlock = editor.flush(last(action.selection), { afterSelection: true })
     const deleteBlocks = action.selection.slice(1, -1)
-    const mergedBlock = editor.mergeData(firstBlock, lastBlock)
+    const mergedBlock = editor.mergeData(firstBlock, lastBlock, { fallback: true })
 
     editor.stores.fragments.push({
-        [key(mergedBlock)]: data(mergedBlock),
+        ...Object.fromEntries(deleteBlocks.map((block) => [[key(block)], null])),
+        [key(firstBlock)]: null,
         [key(lastBlock)]: null,
-        ...Object.fromEntries(deleteBlocks.map((block) => [[key(block)], null]))
+        [key(mergedBlock)]: data(mergedBlock)
     })
-    editor.snapshotSelection({
-        block: mergedBlock,
-        collapsedAtStart: true,
-        restoreAfterUpdate: true
-    })
+    editor.snapshotSelection({ collapsedAtStart: true, restoreAfterUpdate: true })
 
     return {}
 }
@@ -118,8 +115,10 @@ export function swap(action: SwapAction, editor: EditorModule): Result {
                 flushedBlock.blockId
             )
             swapedBlock = editor.mergeData(swapedBlock, flushedBlock)
-            swapedBlocks.push(swapedBlock)
-            deleteBlocks.push(flushedBlock)
+            if (swapedBlock) {
+                swapedBlocks.push(swapedBlock)
+                deleteBlocks.push(flushedBlock)
+            }
         }
     }
 
@@ -182,6 +181,7 @@ export interface ReplaceAction {
     type: 'replace'
     block1: BlockNode
     block2: BlockNode
+    select?: boolean
 }
 
 export function replace(action: ReplaceAction, editor: EditorModule): Result {
@@ -193,7 +193,9 @@ export function replace(action: ReplaceAction, editor: EditorModule): Result {
         [key(replaceBlock)]: data(replaceBlock)
     })
 
-    editor.select(replaceBlock, { afterUpdate: true })
+    if (action.select ?? true) {
+        editor.select(replaceBlock, { afterUpdate: true })
+    }
     return {}
 }
 
@@ -273,7 +275,7 @@ export function shadow(action: ShadowAction, editor: EditorModule): ShadowResult
 export interface PromptAction {
     type: 'prompt'
     placeholder: string
-    run: (value: string, block: BlockNode) => void
+    run: (value: string) => void
 }
 
 export function prompt(action: PromptAction, editor: EditorModule): Result {

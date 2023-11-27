@@ -76,15 +76,21 @@ export interface BlockTypeData {
     [key: string]: true
 }
 
-export function readBlockType(state: SelectionState): BlockTypeData {
+export function readBlockType(
+    state: SelectionState,
+    filter?: (block: BlockNode) => boolean
+): BlockTypeData {
     const result = {}
 
     for (const [key, selected] of Object.entries(state)) {
         if (selected) {
-            const { blockType } = parseKey(key)
-            result[blockType] = true
+            const block = parseKey(key)
+            if (filter?.(block) ?? true) {
+                const { blockType } = block
+                result[blockType] = true
 
-            if (Object.keys(result).length > 1) return {}
+                if (Object.keys(result).length > 1) return {}
+            }
         }
     }
 

@@ -7,6 +7,26 @@ export interface SelectionSnapshot {
     endOffset: number
 }
 
+export function collapseSelectionSnapshot(snapshot: SelectionSnapshot, atStart = false) {
+    if (!snapshot) return snapshot
+
+    if (atStart) {
+        return {
+            ...snapshot,
+            collapsed: true,
+            endBlockId: snapshot.startBlockId,
+            endOffset: snapshot.startOffset
+        }
+    }
+
+    return {
+        ...snapshot,
+        collapsed: true,
+        startBlockId: snapshot.endBlockId,
+        startOffset: snapshot.endOffset
+    }
+}
+
 export function createSelectionSnapshot(root: HTMLElement): SelectionSnapshot {
     function walk(root: Node, container: Node, offset: number) {
         if (!root) return

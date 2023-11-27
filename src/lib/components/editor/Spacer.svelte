@@ -1,34 +1,33 @@
 <script lang="ts">
     import { getContext } from 'svelte'
     import { createStyle } from '@splitflow/designer/svelte'
-    import {
-        type SpacerNode,
-        createParagraphBlock,
-        isEqual,
-        createListItemBlock
-    } from '../../document'
-    import { EditorModule, flush } from '../../editor-module'
-    import { cloneNode } from '../../dom'
+    import { type SpacerNode, createParagraphBlock, createListItemBlock } from '../../document'
+    import { EditorModule } from '../../editor-module'
+    import { activateFlushVoid } from '../../extensions/flush'
+    import { createUnselect } from '../../stores/document/selection'
 
     const style = createStyle('Spacer')
 
+    const editor = getContext<EditorModule>(EditorModule)
+    const { selection } = editor.stores
+
     export let block: SpacerNode
+    export const getElement = () => element
     let element: HTMLElement
 
-    export function getElement() {
-        return element
-    }
+    const unselect = createUnselect()
+    const flushExtension = activateFlushVoid(editor)
 
-    const editor = getContext<EditorModule>(EditorModule)
+    $: flushExtension.block = block
 
-    let prompt: string
-
-    flush((action) => {
-        if (isEqual(action.block, block)) {
-            const fragment = cloneNode(element, action)
-            return { block: { ...block, text: fragment.textContent } }
+    $: unselect($selection, block, () => {
+        const prompt = element.textContent
+        if (prompt !== '') {
+            editor.replace(block, createParagraphBlock(prompt), { select: false })
         }
     })
+
+    let prompt: string
 
     export function keydown(event: KeyboardEvent) {
         if (event.key.length == 1 && !event.metaKey && !event.ctrlKey) {

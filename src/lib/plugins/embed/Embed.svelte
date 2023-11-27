@@ -4,6 +4,7 @@
     import { getContext } from 'svelte'
     import { EditorModule } from '../../editor-module'
     import { isSelected } from '../../stores/document/selection'
+    import { activateFlushVoid } from '../../extensions/flush'
 
     const style = createStyle('Embed')
 
@@ -15,6 +16,9 @@
     export const getElement = () => element
     let element: HTMLElement
 
+    const flushExtension = activateFlushVoid(editor)
+
+    $: flushExtension && (flushExtension.block = block)
     $: selected = editor ? isSelected($selection, block) : false
 
     function rootVariant(block: EmbedNode, selected: boolean) {
@@ -26,7 +30,7 @@
     }
 </script>
 
-<div class:editor data-sf-block-id={block.blockId} bind:this={element}>
+<div data-sf-block-id={block.blockId} bind:this={element} class:editor>
     <span><br /></span>
     <figure class={style.root(rootVariant(block, selected))} contenteditable="false">
         <div class={`embed ${style.embed()}`}>

@@ -4,6 +4,7 @@
     import { EditorModule } from '../../editor-module'
     import { type ImageNode } from '../../document'
     import { isSelected } from '../../stores/document/selection'
+    import { activateFlushVoid } from '../../extensions/flush'
 
     const style = createStyle('Image')
 
@@ -15,6 +16,9 @@
     export const getElement = () => element
     let element: HTMLElement
 
+    const flushExtension = activateFlushVoid(editor)
+
+    $: flushExtension.block = block
     $: selected = isSelected($selection, block)
 </script>
 

@@ -22,6 +22,8 @@ export function activateFormat(editor: EditorModule, style: Style) {
         document.addEventListener('selectionchange', selectionChange)
         editor.dispatcher.addActionHandler('format', format, editor)
         return () => {
+            formatStore.clear(key(block))
+
             document.removeEventListener('selectionchange', selectionChange)
             editor.dispatcher.removeActionHandler('format', format, editor)
         }
@@ -41,6 +43,7 @@ export function activateFormat(editor: EditorModule, style: Style) {
 
     const selectionChange = debounceSelectionChange(() => {
         const range = getBoundedSelectionRange(element)
+
         if (range) {
             formatStore.push({
                 [key(block)]: formatData(getRangeWrappers(range, element))

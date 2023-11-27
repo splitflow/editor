@@ -31,9 +31,10 @@
     import SpacerToolbar from './SpacerToolbar.svelte'
     import ListItem from './ListItem.svelte'
     import Spacer from './Spacer.svelte'
-    import { createSelectionSnapshot } from '../../selection-snapshot'
+    import { collapseSelectionSnapshot, createSelectionSnapshot } from '../../selection-snapshot'
     import { activateComponentExtensions, type EditableExtension } from '../../extension'
     import Prompt from './Prompt.svelte'
+    import FloatingToolbar from './FloatingToolbar.svelte'
 
     const style = createStyle('Editable')
     const config = createConfig('Editable')
@@ -46,8 +47,9 @@
         { editor, style, config }
     )
 
-    $: console.log($document)
     let element: HTMLElement
+
+    let floatingToolbar: FloatingToolbar
 
     const registry = createDocumentRegistry(document)
     $: registry2 = $registry
@@ -62,7 +64,6 @@
                     if (builder.unselect(record.block)) {
                         const block = editor.flush(record.block, { change: true })
                         if (block) {
-                            console.log('WSC')
                             fragments.push({ [key(block)]: data(block) })
                         }
                     }
@@ -77,7 +78,6 @@
     select((action) => {
         const record = $registry.getRecord(action.block)
         if (record?.element) {
-            console.log('Select')
             setSelectionCollapsed(record.element, action.atStart)
         } else {
             console.warn(
@@ -93,8 +93,14 @@
     })
 
     snapshotSelection((action) => {
-        const record = action.block ? $registry.getRecord(action.block) : undefined
-        return { snapshot: createSelectionSnapshot(record?.element ?? element /*, action*/) }
+        let snapshot = createSelectionSnapshot(element)
+        if (action.collapsedAtStart) {
+            snapshot = collapseSelectionSnapshot(snapshot, true)
+        } else if (action.collapsedAtEnd) {
+            snapshot = collapseSelectionSnapshot(snapshot)
+        }
+
+        return { snapshot }
     })
 
     function keydown(event: KeyboardEvent) {
@@ -140,7 +146,7 @@
 
             if (isSelectionCollapsedAtStart(record.element)) {
                 event.preventDefault()
-                console.log('COLLAPSED')
+
                 const beforeBlock = before($document, record.block)
                 if (!beforeBlock) {
                     //skip
@@ -232,6 +238,14 @@
         }
     }
 
+    function mousedown(event: MouseEvent) {
+        floatingToolbar?.mousedown(event)
+    }
+
+    function mouseup(event: MouseEvent) {
+        floatingToolbar?.mouseup(event)
+    }
+
     function getSelectedBlocks() {
         return [...$registry.records()].filter((r) => $selection[key(r.block)]).map((r) => r.block)
     }
@@ -251,6 +265,8 @@
     on:dragover={dragover}
     on:drop={drop}
     on:paste={paste}
+    on:mousedown={mousedown}
+    on:mouseup={mouseup}
 >
     {#each registry2.read() as record (record.key)}
         {#if record instanceof RecordGroup}
@@ -304,10 +320,14 @@
             {/if}
         {/if}
     {/each}
+    {#if $config.floatingToolbar.enabled()}
+        <FloatingToolbar bind:this={floatingToolbar} />
+    {/if}
 </div>
 
 <style>
     div {
+        position: relative;
         overflow-y: auto;
     }
 

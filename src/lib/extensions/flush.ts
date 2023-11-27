@@ -67,3 +67,26 @@ export function activateFlushText(editor: EditorModule) {
         }
     }
 }
+
+export function activateFlushVoid(editor: EditorModule) {
+    if (!editor) return undefined
+
+    let _block: BlockNode
+
+    onMount(() => {
+        editor.dispatcher.addActionHandler('flush', flush, editor)
+        return () => editor.dispatcher.removeActionHandler('flush', flush, editor)
+    })
+
+    function flush(action: FlushAction): FlushResult {
+        if (isEqual(action.block, _block)) {
+            return { block: _block }
+        }
+    }
+
+    return {
+        set block(block: BlockNode) {
+            _block = block
+        }
+    }
+}

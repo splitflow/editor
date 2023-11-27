@@ -65,7 +65,6 @@ export interface SelectResult {
 }
 
 export interface SnapshotSelectionOptions {
-    block?: BlockNode
     collapsedAtStart?: boolean
     collapsedAtEnd?: boolean
     restoreAfterUpdate?: boolean
@@ -73,7 +72,6 @@ export interface SnapshotSelectionOptions {
 
 export interface SnapshotSelectionAction {
     type: 'snapshotselection'
-    block?: BlockNode
     collapsedAtStart: boolean
     collapsedAtEnd: boolean
     restoreAfterUpdate: boolean
@@ -81,6 +79,10 @@ export interface SnapshotSelectionAction {
 
 export interface SnapshotSelectionResult {
     snapshot?: SelectionSnapshot
+}
+
+export interface MergeDataOptions {
+    fallback?: boolean
 }
 
 export interface FlushOptions {
@@ -107,11 +109,7 @@ export interface InsertOptions {
 }
 
 export interface ReplaceOptions {
-    shadow?: boolean
-}
-
-export interface UpdateOptions {
-    shadow?: boolean
+    select?: boolean
 }
 
 export interface ShadowOptions {
@@ -297,8 +295,8 @@ export class EditorModule {
         return result?.snapshot
     }
 
-    mergeData<T extends BlockNode>(block1: T, block2: BlockNode): T {
-        const action: MergeDataAction = { type: 'mergedata', block1, block2 }
+    mergeData<T extends BlockNode>(block1: T, block2: BlockNode, options?: MergeDataOptions): T {
+        const action: MergeDataAction = { type: 'mergedata', block1, block2, ...options }
         const result = this.dispatcher.dispatchAction(action, {
             discriminator: this
         }) as MergeResult
@@ -415,7 +413,6 @@ export function select(handler: (action: SelectAction) => SelectResult) {
     })
 
     afterUpdate(() => {
-        console.log('after update')
         if (afterUpdateAction) {
             handler(afterUpdateAction)
             afterUpdateAction = null
@@ -451,7 +448,6 @@ export function snapshotSelection(
 
     afterUpdate(() => {
         if (afterUpdateSnapshot) {
-            console.log(afterUpdateSnapshot)
             restoreSelectionSnapshot(afterUpdateSnapshot)
             afterUpdateSnapshot = null
         }

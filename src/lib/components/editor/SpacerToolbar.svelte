@@ -7,36 +7,43 @@
         createImageBlock,
         type SpacerNode,
         createParagraphBlock,
-        isEqual,
         createListItemBlock
     } from '../../document'
-    import { EditorModule, flush } from '../../editor-module'
-    import { cloneNode } from '../../dom'
+    import { EditorModule } from '../../editor-module'
     import { activateComponentExtensions, toolbarExtension } from '../../extension'
+    import { activateFlushVoid } from '../../extensions/flush'
+    import { createUnselect } from '../../stores/document/selection'
 
     const style = createStyle('SpacerToolbar')
     const config = createConfig('SpacerToolbar')
 
-    export let block: SpacerNode
-    let element: HTMLElement
-
-    export function getElement() {
-        return element
-    }
-
     const editor = getContext<EditorModule>(EditorModule)
     const { selection, fragments } = editor.stores
 
+    export let block: SpacerNode
+    export const getElement = () => element
+    let element: HTMLElement
+
+    const unselect = createUnselect()
+    const flushExtension = activateFlushVoid(editor)
     const extensions = activateComponentExtensions(
         editor.extension.match(toolbarExtension('spacer')),
         { editor, style, config }
     )
 
     let prompt: string
+
+    $: flushExtension.block = block
     $: selected = !!$selection?.[key(block)]
     $: open = selected && !prompt
     $: expanded = !open ? false : expanded ?? false
 
+    $: unselect($selection, block, () => {
+        const prompt = element.textContent
+        if (prompt !== '') {
+            editor.replace(block, createParagraphBlock(prompt), { select: false })
+        }
+    })
 
     function uploadImage() {
         editor.openFileDialog('image/*', (file: File) => {
@@ -56,15 +63,6 @@
             )
         })
     }
-
-    flush((action) => {
-        if (isEqual(action.block, block)) {
-            open = false // we should have select / unselect callbacks to be more explicit
-
-            const fragment = cloneNode(element, action)
-            return { block: { ...block, text: fragment.textContent } }
-        }
-    })
 
     export function keydown(event: KeyboardEvent) {
         if (event.key.length == 1 && !event.metaKey && !event.ctrlKey) {

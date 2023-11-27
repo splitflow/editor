@@ -1,6 +1,6 @@
 <script lang="ts">
     import { createStyle } from '@splitflow/designer/svelte'
-    import { key, type PromptNode } from '../../document'
+    import { type PromptNode } from '../../document'
     import { isSelectionCollapsedAtStart } from '../../dom'
     import { getContext } from 'svelte'
     import { EditorModule } from '../../editor-module'
@@ -34,7 +34,7 @@
         if (event.key === 'Enter') {
             event.preventDefault()
 
-            const prompt = element.firstChild.textContent
+            const prompt = element.textContent
             if (prompt) {
                 block.run(prompt)
             } else {
@@ -46,12 +46,12 @@
 
         requestAnimationFrame(() => {
             // element might be undefined if block was deleted
-            hasPrompt = element?.firstChild.textContent !== ''
+            hasPrompt = element?.textContent !== ''
         })
     }
 
     export function paste(event: ClipboardEvent) {
-        if (!element.firstChild.textContent) {
+        if (!element.textContent) {
             event.preventDefault()
 
             const prompt = event.clipboardData.getData('text/plain')
@@ -61,13 +61,13 @@
 
         requestAnimationFrame(() => {
             // element might be undefined if block was deleted
-            hasPrompt = element?.firstChild.textContent !== ''
+            hasPrompt = element?.textContent !== ''
         })
     }
 </script>
 
-<div data-sf-block-id={block.blockId} class={style.root()} bind:this={element}>
-    <p class={style.prompt()}>
+<div class={style.root()}>
+    <p data-sf-block-id={block.blockId} bind:this={element} class={style.prompt()}>
         <br />
     </p>
     {#if !hasPrompt}

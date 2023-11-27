@@ -16,7 +16,6 @@ export interface SpacerNode {
     blockType: 'spacer'
     blockId: string
     position: number
-    text: string
 }
 
 export interface PromptNode {
@@ -72,8 +71,7 @@ export function createSpacerBlock(position = 10e8): SpacerNode {
     return {
         blockType: 'spacer',
         blockId: crypto.randomUUID(),
-        position,
-        text: ''
+        position
     }
 }
 
@@ -154,6 +152,19 @@ export function isHeaderNode(block: BlockNode): block is HeaderNode {
 
 export function isImageNode(block: BlockNode): block is ImageNode {
     return block?.blockType === 'image'
+}
+
+export function isVoidNode(block: BlockNode) {
+    return !isNotVoidNode(block)
+}
+
+export function isNotVoidNode(block: BlockNode) {
+    return (
+        (block?.blockType === 'paragraph' ||
+            block?.blockType === 'list-item' ||
+            block?.blockType === 'header') ??
+        false
+    )
 }
 
 export function key(block: BlockNode) {

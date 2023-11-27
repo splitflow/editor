@@ -2,7 +2,13 @@
     import { createStyle, createConfig, svg } from '@splitflow/designer/svelte'
     import { getContext } from 'svelte'
     import { EditorModule } from '../../editor-module'
-    import { createHeaderBlock, createImageBlock, createParagraphBlock, key } from '../../document'
+    import {
+        createHeaderBlock,
+        createImageBlock,
+        createParagraphBlock,
+        isNotVoidNode,
+        key
+    } from '../../document'
     import { readFormat } from '../../stores/document/format'
     import { readBlockType, readSelection } from '../../stores/document/selection'
     import { activateComponentExtensions, toolbarExtension } from '../../extension'
@@ -19,7 +25,7 @@
     )
 
     $: formatData = readFormat($format)
-    $: blockTypeData = readBlockType($selection)
+    $: blockTypeData = readBlockType($selection, isNotVoidNode)
 
     function swapHeader() {
         if (blockTypeData.header) {
