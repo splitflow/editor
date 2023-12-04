@@ -16,6 +16,7 @@
     import Spacer from './Spacer.svelte'
     import { createViewer, ViewerModule } from '../../viewer-module'
     import type { EditorModule } from '../../editor-module'
+    import type { ViewerExtension } from '../../extension'
 
     export let module: ViewerModule | EditorModule = createViewer()
 
@@ -25,6 +26,8 @@
     const style = createStyle('Viewer', module.designer)
 
     const { document } = module.stores
+
+    const extensions = module.extension.get<ViewerExtension>('viewer')
 
     const registry = createDocumentRegistry(document)
     $: registry2 = $registry
@@ -56,8 +59,11 @@
             {/if}
         {:else}
             {@const block = record.block}
+            {@const extension = extensions.find((e) => e.blockType === block.blockType)}
 
-            {#if isParagraphNode(block)}
+            {#if extension}
+                <svelte:component this={extension.component} {block} />
+            {:else if isParagraphNode(block)}
                 <Paragraph {block} />
             {:else if isHeaderNode(block)}
                 <Header {block} />

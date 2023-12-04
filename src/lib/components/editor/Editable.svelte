@@ -12,13 +12,15 @@
         parseKey,
         isSpacerNode,
         createSpacerBlock,
-        isListItemNode
+        isListItemNode,
+        isPromptNode
     } from '../../document'
     import {
         findAncestorRootChild,
         isSelectionCollapsedAtEnd,
         isSelectionCollapsedAtStart,
-        setSelectionCollapsed
+        setSelectionCollapsed,
+        insertNode
     } from '../../dom'
     import { windowSelectionRange } from '../../windowselection'
     import { RecordGroup, createDocumentRegistry } from '../../registry'
@@ -29,7 +31,10 @@
     import SpacerToolbar from './SpacerToolbar.svelte'
     import ListItem from './ListItem.svelte'
     import Spacer from './Spacer.svelte'
-    import { createSelectionSnapshot } from '../../selection-snapshot'
+    import { collapseSelectionSnapshot, createSelectionSnapshot } from '../../selection-snapshot'
+    import { activateComponentExtensions, type EditableExtension } from '../../extension'
+    import Prompt from './Prompt.svelte'
+    import FloatingToolbar from './FloatingToolbar.svelte'
 
     const style = createStyle('Editable')
     const config = createConfig('Editable')
@@ -37,8 +42,14 @@
     const editor = getContext<EditorModule>(EditorModule)
     const { fragments, document, selection, dragndrop } = editor.stores
 
-    $: console.log($document)
+    const extensions = activateComponentExtensions(
+        editor.extension.get<EditableExtension>('editable'),
+        { editor, style, config }
+    )
+
     let element: HTMLElement
+
+    let floatingToolbar: FloatingToolbar
 
     const registry = createDocumentRegistry(document)
     $: registry2 = $registry
@@ -53,7 +64,6 @@
                     if (builder.unselect(record.block)) {
                         const block = editor.flush(record.block, { change: true })
                         if (block) {
-                            console.log('WSC')
                             fragments.push({ [key(block)]: data(block) })
                         }
                     }
@@ -68,7 +78,6 @@
     select((action) => {
         const record = $registry.getRecord(action.block)
         if (record?.element) {
-            console.log('Select')
             setSelectionCollapsed(record.element, action.atStart)
         } else {
             console.warn(
@@ -84,12 +93,22 @@
     })
 
     snapshotSelection((action) => {
-        const record = action.block ? $registry.getRecord(action.block) : undefined
-        return { snapshot: createSelectionSnapshot(record?.element ?? element/*, action*/) }
+        let snapshot = createSelectionSnapshot(element)
+        if (action.collapsedAtStart) {
+            snapshot = collapseSelectionSnapshot(snapshot, true)
+        } else if (action.collapsedAtEnd) {
+            snapshot = collapseSelectionSnapshot(snapshot)
+        }
+
+        return { snapshot }
     })
 
     function keydown(event: KeyboardEvent) {
         if (
+            event.ctrlKey ||
+            event.metaKey ||
+            event.key === 'Control' ||
+            event.key === 'Meta' ||
             event.key === 'Tab' ||
             event.key === 'Shift' ||
             event.key === 'ArrowLeft' ||
@@ -124,10 +143,10 @@
                 editor.replace(record.block, createSpacerBlock())
                 return
             }
-            console.log('BACK')
+
             if (isSelectionCollapsedAtStart(record.element)) {
                 event.preventDefault()
-                console.log('COLLAPSED')
+
                 const beforeBlock = before($document, record.block)
                 if (!beforeBlock) {
                     //skip
@@ -168,6 +187,31 @@
         }
     }
 
+    function paste(event: ClipboardEvent) {
+        event.preventDefault()
+
+        if (Object.keys($selection).length > 1) {
+            // multi block selection
+            editor.collapse(getSelectedBlocks())
+
+            const text = event.clipboardData.getData('text/plain')
+            requestAnimationFrame(() => {
+                // we need to wait for collapse after selection to occur
+                insertNode(window.document.createTextNode(text))
+            })
+            return
+        }
+
+        const record = first(getSelectedRecords())
+        if (record.dispatchPaste(event)) {
+            // event has been handled by the block component
+            return
+        }
+
+        const text = event.clipboardData.getData('text/plain')
+        insertNode(window.document.createTextNode(text))
+    }
+
     function dragstart(event: DragEvent) {
         const blockElement = findAncestorRootChild(event.target as HTMLElement, element)
         const { block } = $registry.findRecord(blockElement)
@@ -194,6 +238,14 @@
         }
     }
 
+    function mousedown(event: MouseEvent) {
+        floatingToolbar?.mousedown(event)
+    }
+
+    function mouseup(event: MouseEvent) {
+        floatingToolbar?.mouseup(event)
+    }
+
     function getSelectedBlocks() {
         return [...$registry.records()].filter((r) => $selection[key(r.block)]).map((r) => r.block)
     }
@@ -212,6 +264,9 @@
     on:dragenter={dragenter}
     on:dragover={dragover}
     on:drop={drop}
+    on:paste={paste}
+    on:mousedown={mousedown}
+    on:mouseup={mouseup}
 >
     {#each registry2.read() as record (record.key)}
         {#if record instanceof RecordGroup}
@@ -238,8 +293,17 @@
             {/if}
         {:else}
             {@const block = record.block}
+            {@const extension = $extensions.find(
+                ({ extension }) => extension.blockType === block.blockType
+            )}
 
-            {#if isParagraphNode(block)}
+            {#if extension}
+                <svelte:component
+                    this={extension.extension.component}
+                    {block}
+                    bind:this={record.component}
+                />
+            {:else if isParagraphNode(block)}
                 <Paragraph {block} bind:this={record.component} />
             {:else if isHeaderNode(block)}
                 <Header {block} bind:this={record.component} />
@@ -251,13 +315,19 @@
                 {:else}
                     <Spacer {block} bind:this={record.component} />
                 {/if}
+            {:else if isPromptNode(block)}
+                <Prompt {block} bind:this={record.component} />
             {/if}
         {/if}
     {/each}
+    {#if $config.floatingToolbar.enabled()}
+        <FloatingToolbar bind:this={floatingToolbar} />
+    {/if}
 </div>
 
 <style>
     div {
+        position: relative;
         overflow-y: auto;
     }
 

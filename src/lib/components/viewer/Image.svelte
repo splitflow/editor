@@ -8,5 +8,5 @@
 </script>
 
 <figure class={style.root()}>
-    <img draggable="false" alt="" src={block.src} />
+    <img class={style.image()} draggable="false" alt="" src={block.src} />
 </figure>

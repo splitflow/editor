@@ -1,17 +1,28 @@
 import { findAncestor, getAncestors } from './node'
 import { substractFromRange } from './range'
 
-export function wrapRange(range: Range, root: Node, nodeName: string, className?: string) {
+export function wrapRange(range: Range, root: Node, wrapper: Element): void
+export function wrapRange(range: Range, root: Node, nodeName: string, className?: string): void
+export function wrapRange(range: Range, root: Node, arg1: any, className?: string) {
+    const nodeName = typeof arg1 === 'string' ? arg1 : (arg1 as Node).nodeName
+
     if (findAncestor(range.commonAncestorContainer, root, nodeName)) {
         // range already wrapped. do nothing
         return
     }
 
-    // wrap
-    const wrapperElement = document.createElement(nodeName)
-    if (className) {
-        wrapperElement.setAttribute('class', className)
+    // create wrapper
+    let wrapperElement: Element
+    if (typeof arg1 === 'string') {
+        wrapperElement = document.createElement(nodeName)
+        if (className) {
+            wrapperElement.setAttribute('class', className)
+        }
+    } else {
+        wrapperElement = arg1
     }
+
+    // wrap
     wrapperElement.append(range.collapsed ? '\u200C' : range.extractContents())
     range.insertNode(wrapperElement)
 

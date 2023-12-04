@@ -1,6 +1,15 @@
 import type { Result } from '@splitflow/app'
 import { first, last } from '@splitflow/core/utils'
-import { key, createParagraphBlock, data, createBlock, type BlockNode } from './document'
+import {
+    key,
+    createParagraphBlock,
+    data,
+    createBlock,
+    type BlockNode,
+    type BlockDataNode,
+    createPromptBlock,
+    createSpacerBlock
+} from './document'
 import { EditorModule } from './editor-module'
 
 export interface MergeAction {
@@ -73,18 +82,15 @@ export function collapse(action: CollapseAction, editor: EditorModule): Result {
     const firstBlock = editor.flush(first(action.selection), { beforeSelection: true })
     const lastBlock = editor.flush(last(action.selection), { afterSelection: true })
     const deleteBlocks = action.selection.slice(1, -1)
-    const mergedBlock = editor.mergeData(firstBlock, lastBlock)
+    const mergedBlock = editor.mergeData(firstBlock, lastBlock, { fallback: true })
 
     editor.stores.fragments.push({
-        [key(mergedBlock)]: data(mergedBlock),
+        ...Object.fromEntries(deleteBlocks.map((block) => [[key(block)], null])),
+        [key(firstBlock)]: null,
         [key(lastBlock)]: null,
-        ...Object.fromEntries(deleteBlocks.map((block) => [[key(block)], null]))
+        [key(mergedBlock)]: data(mergedBlock)
     })
-    editor.snapshotSelection({
-        block: mergedBlock,
-        collapsedAtStart: true,
-        restoreAfterUpdate: true
-    })
+    editor.snapshotSelection({ collapsedAtStart: true, restoreAfterUpdate: true })
 
     return {}
 }
@@ -109,8 +115,10 @@ export function swap(action: SwapAction, editor: EditorModule): Result {
                 flushedBlock.blockId
             )
             swapedBlock = editor.mergeData(swapedBlock, flushedBlock)
-            swapedBlocks.push(swapedBlock)
-            deleteBlocks.push(flushedBlock)
+            if (swapedBlock) {
+                swapedBlocks.push(swapedBlock)
+                deleteBlocks.push(flushedBlock)
+            }
         }
     }
 
@@ -125,8 +133,8 @@ export function swap(action: SwapAction, editor: EditorModule): Result {
 export interface InsertAction {
     type: 'insert'
     block: BlockNode
-    before: BlockNode
-    after: BlockNode
+    before?: BlockNode
+    after?: BlockNode
 }
 
 export function insert(action: InsertAction, editor: EditorModule): Result {
@@ -173,17 +181,124 @@ export interface ReplaceAction {
     type: 'replace'
     block1: BlockNode
     block2: BlockNode
+    select?: boolean
 }
 
 export function replace(action: ReplaceAction, editor: EditorModule): Result {
     const { block1, block2 } = action
-
     const replaceBlock = { ...block2, position: block1.position }
 
     editor.stores.fragments.push({
         [key(block1)]: null,
         [key(replaceBlock)]: data(replaceBlock)
     })
-    editor.select(replaceBlock, { afterUpdate: true })
+
+    if (action.select ?? true) {
+        editor.select(replaceBlock, { afterUpdate: true })
+    }
+    return {}
+}
+
+export interface ShadowAction {
+    type: 'shadow'
+    block?: BlockNode
+    shadow?: BlockNode
+    update?: BlockDataNode
+    replace?: BlockNode
+    flush?: boolean
+    clear?: boolean
+}
+
+export interface ShadowResult {
+    block?: BlockNode
+}
+
+export function shadow(action: ShadowAction, editor: EditorModule): ShadowResult {
+    if (action.clear) {
+        const block = first(editor.stores.shadow.read(true))
+        editor.stores.shadow.clear()
+        return { block }
+    }
+
+    if (action.block && action.shadow) {
+        const { block, shadow } = action
+        const shadowBlock = { ...shadow, position: block.position }
+
+        editor.stores.shadow.merge({
+            [key(block)]: null,
+            [key(shadowBlock)]: data(shadowBlock)
+        })
+        editor.select(shadowBlock, { afterUpdate: true })
+        return {}
+    }
+
+    if (action.update) {
+        const { update } = action
+        const shadow = first(editor.stores.shadow.read())
+
+        editor.stores.shadow.merge({
+            [key(shadow)]: update
+        })
+
+        if (action.flush) {
+            editor.stores.shadow.flush()
+        }
+
+        return {}
+    }
+
+    if (action.replace) {
+        const { replace } = action
+        const shadow = first(editor.stores.shadow.read())
+        const replaceShadowBlock = { ...replace, position: shadow.position }
+
+        editor.stores.shadow.merge({
+            [key(shadow)]: null,
+            [key(replaceShadowBlock)]: data(replaceShadowBlock)
+        })
+
+        if (action.flush) {
+            editor.stores.shadow.flush()
+        }
+
+        return {}
+    }
+
+    if (action.flush) {
+        editor.stores.shadow.flush()
+        return {}
+    }
+
+    return {}
+}
+
+export interface PromptAction {
+    type: 'prompt'
+    placeholder: string
+    run: (value: string) => void
+}
+
+export function prompt(action: PromptAction, editor: EditorModule): Result {
+    const { placeholder, run } = action
+
+    const selection = editor.stores.selection.read()
+    let spacerBlock = editor.stores.document.first(
+        selection.filter((b) => b.blockType === 'spacer')
+    )
+
+    if (!spacerBlock) {
+        const position = editor.stores.document.insertAfterPosition(selection)
+        spacerBlock = createSpacerBlock(position)
+        editor.stores.fragments.push({
+            [key(spacerBlock)]: data(spacerBlock)
+        })
+    }
+
+    const promptBlock = createPromptBlock(placeholder, run, spacerBlock.position)
+    editor.stores.shadow.merge({
+        [key(spacerBlock)]: null,
+        [key(promptBlock)]: data(promptBlock)
+    })
+    editor.select(promptBlock, { afterUpdate: true })
     return {}
 }

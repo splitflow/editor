@@ -15,12 +15,15 @@
   "files": [
     "dist/**/*.js",
     "dist/**/*.cjs",
-    "dist/**/*.d.ts"
+    "dist/**/*.d.ts",
+    "src/svelte/**/*.js",
+    "src/svelte/**/*.svelte"
   ],
   "exports": {
     ".": {
       "import": "./dist/index.js",
-      "require": "./dist/index.umd.cjs"
+      "require": "./dist/index.umd.cjs",
+      "types": "./dist/lib/index.d.ts"
     },
     "./svelte": {
       "svelte": "./src/svelte/index.js"
@@ -56,7 +59,7 @@
   },
   "dependencies": {
     "@splitflow/app": "^1.1.0",
-    "@splitflow/core": "^2.1.0",
+    "@splitflow/core": "file:../core",
     "@splitflow/css-reset": "^1.1.0",
     "@splitflow/designer": "^2.1.0",
     "@splitflow/lib": "^1.1.0"

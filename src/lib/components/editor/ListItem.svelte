@@ -3,34 +3,21 @@
 <script lang="ts">
     import { getContext } from 'svelte'
     import { createStyle } from '@splitflow/designer/svelte'
-    import { EditorModule, flush, format } from '../../editor-module'
-    import { windowSelectionRange } from '../../windowselection'
+    import { EditorModule } from '../../editor-module'
     import {
         createListItemBlock,
         createParagraphBlock,
         createSpacerBlock,
-        isEqual,
-        key,
         type ListItemNode
     } from '../../document'
-    import { MarkdownEmitter, editableMarkdown } from '../../markdown'
-    import {
-        getRangeWrappers,
-        unwrapRange,
-        wrapRange,
-        cloneNode,
-        getBoundedSelectionRange,
-        isSelectionCollapsedAtEnd,
-        isSelectionCollapsedAtStart
-    } from '../../dom'
-    import { formatData } from '../../stores/document/format'
+    import { editableMarkdown } from '../../markdown'
+    import { isSelectionCollapsedAtEnd, isSelectionCollapsedAtStart } from '../../dom'
+    import { activateFlushMarkdown } from '../../extensions/flush'
+    import { activateFormat } from '../../extensions/format'
 
     const style = createStyle('ListItem')
 
     const editor = getContext<EditorModule>(EditorModule)
-    const { format: formatStore } = editor.stores
-
-    const emitter = new MarkdownEmitter()
 
     export let block: ListItemNode
     let element: HTMLElement
@@ -39,43 +26,13 @@
         return element
     }
 
-    $: {
-        console.log('LI BLOCK update' + block.markdown)
-    }
+    const flushExtension = activateFlushMarkdown(editor)
+    const formatExtension = activateFormat(editor, style)
 
-    windowSelectionRange(() => {
-        const range = getBoundedSelectionRange(element)
-        if (range) {
-            formatStore.push({
-                [key(block)]: formatData(getRangeWrappers(range, element))
-            })
-            return
-        }
-        formatStore.clear(key(block))
-    })
-
-    format((action) => {
-        const range = getBoundedSelectionRange(element)
-        if (range) {
-            if (action.off) {
-                unwrapRange(range, element, action.tagName)
-            } else {
-                wrapRange(range, element, action.tagName, style[action.className]())
-            }
-            return {}
-        }
-    })
-
-    flush((action) => {
-        if (isEqual(action.block, block)) {
-            const fragment = cloneNode(element, action)
-            const markdown = emitter.emitMarkdown(fragment)
-            if (action.change && markdown === block.markdown) {
-                return { block: null }
-            }
-            return { block: { ...block, markdown } }
-        }
-    })
+    $: flushExtension.element = element
+    $: flushExtension.block = block
+    $: formatExtension.element = element
+    $: formatExtension.block = block
 
     export function keydown(event: KeyboardEvent) {
         if (event.key === 'Backspace') {

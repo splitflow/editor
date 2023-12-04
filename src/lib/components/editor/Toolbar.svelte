@@ -2,9 +2,16 @@
     import { createStyle, createConfig, svg } from '@splitflow/designer/svelte'
     import { getContext } from 'svelte'
     import { EditorModule } from '../../editor-module'
-    import { createHeaderBlock, createImageBlock, createParagraphBlock, key } from '../../document'
+    import {
+        createHeaderBlock,
+        createImageBlock,
+        createParagraphBlock,
+        isNotVoidNode,
+        key
+    } from '../../document'
     import { readFormat } from '../../stores/document/format'
     import { readBlockType, readSelection } from '../../stores/document/selection'
+    import { activateComponentExtensions, toolbarExtension } from '../../extension'
 
     const style = createStyle('Toolbar')
     const config = createConfig('Toolbar')
@@ -12,8 +19,13 @@
     const editor = getContext<EditorModule>(EditorModule)
     const { selection, format, fragments } = editor.stores
 
+    const extensions = activateComponentExtensions(
+        editor.extension.match(toolbarExtension('main')),
+        { editor, style, config }
+    )
+
     $: formatData = readFormat($format)
-    $: blockTypeData = readBlockType($selection)
+    $: blockTypeData = readBlockType($selection, isNotVoidNode)
 
     function swapHeader() {
         if (blockTypeData.header) {
@@ -92,4 +104,12 @@
             />
         </button>
     {/if}
+    {#each $extensions as { extension, activation }}
+        <button
+            class={style.button({ [extension.name]: true })}
+            on:mousedown|preventDefault={() => activation.run()}
+        >
+            <svg use:svg={$config[extension.name].svg(extension.svg)} />
+        </button>
+    {/each}
 </menu>

@@ -16,7 +16,14 @@ export interface SpacerNode {
     blockType: 'spacer'
     blockId: string
     position: number
-    text: string
+}
+
+export interface PromptNode {
+    blockType: 'prompt'
+    blockId: string
+    position: number
+    placeholder: string
+    run: (value: string) => void
 }
 
 export interface ParagraphNode {
@@ -60,12 +67,25 @@ export function createBlock<T extends BlockNode>(
     }
 }
 
-export function createSpacerBlock(): SpacerNode {
+export function createSpacerBlock(position = 10e8): SpacerNode {
     return {
         blockType: 'spacer',
         blockId: crypto.randomUUID(),
-        position: 10e8,
-        text: ''
+        position
+    }
+}
+
+export function createPromptBlock(
+    placeholder = '',
+    run: (value: string) => void,
+    position = 10e8
+): PromptNode {
+    return {
+        blockType: 'prompt',
+        blockId: crypto.randomUUID(),
+        position,
+        placeholder,
+        run
     }
 }
 
@@ -114,6 +134,10 @@ export function isSpacerNode(block: BlockNode): block is SpacerNode {
     return block?.blockType === 'spacer'
 }
 
+export function isPromptNode(block: BlockNode): block is PromptNode {
+    return block?.blockType === 'prompt'
+}
+
 export function isParagraphNode(block: BlockNode): block is ParagraphNode {
     return block?.blockType === 'paragraph'
 }
@@ -128,6 +152,19 @@ export function isHeaderNode(block: BlockNode): block is HeaderNode {
 
 export function isImageNode(block: BlockNode): block is ImageNode {
     return block?.blockType === 'image'
+}
+
+export function isVoidNode(block: BlockNode) {
+    return !isNotVoidNode(block)
+}
+
+export function isNotVoidNode(block: BlockNode) {
+    return (
+        (block?.blockType === 'paragraph' ||
+            block?.blockType === 'list-item' ||
+            block?.blockType === 'header') ??
+        false
+    )
 }
 
 export function key(block: BlockNode) {

@@ -2,73 +2,40 @@
 
 <script lang="ts">
     import { getContext } from 'svelte'
-    import { createStyle } from '@splitflow/designer/svelte'
-    import { EditorModule, flush, format } from '../../editor-module'
-    import { windowSelectionRange } from '../../windowselection'
-    import { createSpacerBlock, isEqual, key, type ParagraphNode } from '../../document'
-    import { MarkdownEmitter, editableMarkdown } from '../../markdown'
-    import {
-        getRangeWrappers,
-        unwrapRange,
-        wrapRange,
-        cloneNode,
-        getBoundedSelectionRange
-    } from '../../dom'
-    import { formatData } from '../../stores/document/format'
+    import { createConfig, createStyle } from '@splitflow/designer/svelte'
+    import { EditorModule } from '../../editor-module'
+    import { createSpacerBlock, type ParagraphNode } from '../../document'
+    import { editableMarkdown } from '../../markdown'
+    import { activateComponentExtensions, blockExtension } from '../../extension'
+    import { activateFormat } from '../../extensions/format'
+    import { activateFlushMarkdown } from '../../extensions/flush'
 
     const style = createStyle('Paragraph')
+    const config = createConfig('Paragraph')
 
     const editor = getContext<EditorModule>(EditorModule)
-    const { format: formatStore } = editor.stores
-
-    const emitter = new MarkdownEmitter()
 
     export let block: ParagraphNode
+    export const getElement = () => element
     let element: HTMLElement
 
-    export function getElement() {
-        return element
-    }
+    const flushExtension = activateFlushMarkdown(editor)
+    const formatExtension = activateFormat(editor, style)
+    const extensions = activateComponentExtensions(
+        editor.extension.match(blockExtension('paragraph')),
+        { editor, style, config },
+        true
+    )
 
-    $: {
-        console.log('P BLOCK update' + block.markdown)
-    }
-
-    windowSelectionRange(() => {
-        const range = getBoundedSelectionRange(element)
-        if (range) {
-            formatStore.push({
-                [key(block)]: formatData(getRangeWrappers(range, element))
-            })
-            return
-        }
-        formatStore.clear(key(block))
-    })
-
-    format((action) => {
-        const range = getBoundedSelectionRange(element)
-        if (range) {
-            if (action.off) {
-                unwrapRange(range, element, action.tagName)
-            } else {
-                wrapRange(range, element, action.tagName, style[action.className]())
-            }
-            return {}
-        }
-    })
-
-    flush((action) => {
-        if (isEqual(action.block, block)) {
-            const fragment = cloneNode(element, action)
-            const markdown = emitter.emitMarkdown(fragment)
-            if (action.change && markdown === block.markdown) {
-                return { block: null }
-            }
-            return { block: { ...block, markdown } }
-        }
-    })
+    $: flushExtension.element = element
+    $: flushExtension.block = block
+    $: formatExtension.element = element
+    $: formatExtension.block = block
+    $: $extensions.forEach(({ activation }) => (activation.element = element))
 
     export function keydown(event: KeyboardEvent) {
+        $extensions.forEach(({ activation }) => activation.keydown(event))
+
         if (event.key === 'Backspace') {
             requestAnimationFrame(() => {
                 // element might be undefined if paragraph was deleted

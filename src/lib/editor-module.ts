@@ -2,7 +2,7 @@ import { afterUpdate, getContext, onMount } from 'svelte'
 import createFragmentsStore, { type FragmentsStore } from './stores/document/fragments'
 import createDocumentStore, { type DocumentStore } from './stores/document/document'
 import createSelectionStore, { type SelectionStore } from './stores/document/selection'
-import type { BlockNode } from './document'
+import { type BlockNode, type BlockDataNode } from './document'
 import createFormatStore, { type FormatStore } from './stores/document/format'
 import createDragnDropStore, { type DragnDropStore } from './stores/document/dragndrop'
 import { mergeData, type MergeDataAction, type MergeResult } from './merge'
@@ -14,8 +14,11 @@ import type {
     BreaklineAction,
     SwapAction,
     InsertAction,
+    PromptAction,
     RemoveAction,
-    ReplaceAction
+    ReplaceAction,
+    ShadowAction,
+    ShadowResult
 } from './actions'
 import { restoreSelectionSnapshot, type SelectionSnapshot } from './selection-snapshot'
 import type { Readable } from 'svelte/store'
@@ -31,6 +34,10 @@ import { createDesigner, type SplitflowDesigner } from '@splitflow/designer'
 import gateway from './services/gateway'
 import { storage } from './services/storage'
 import { firstError, type Error } from '@splitflow/lib'
+import * as extensions from './extensions'
+import { createExtensionManager, type ExtensionMananger } from './extension'
+import type { ShadowStore } from './stores/document/shadow'
+import createShadowStore from './stores/document/shadow'
 
 export interface FormatAction {
     type: 'format'
@@ -58,7 +65,6 @@ export interface SelectResult {
 }
 
 export interface SnapshotSelectionOptions {
-    block?: BlockNode
     collapsedAtStart?: boolean
     collapsedAtEnd?: boolean
     restoreAfterUpdate?: boolean
@@ -66,7 +72,6 @@ export interface SnapshotSelectionOptions {
 
 export interface SnapshotSelectionAction {
     type: 'snapshotselection'
-    block?: BlockNode
     collapsedAtStart: boolean
     collapsedAtEnd: boolean
     restoreAfterUpdate: boolean
@@ -74,6 +79,10 @@ export interface SnapshotSelectionAction {
 
 export interface SnapshotSelectionResult {
     snapshot?: SelectionSnapshot
+}
+
+export interface MergeDataOptions {
+    fallback?: boolean
 }
 
 export interface FlushOptions {
@@ -99,8 +108,22 @@ export interface InsertOptions {
     after?: BlockNode
 }
 
+export interface ReplaceOptions {
+    select?: boolean
+}
+
+export interface ShadowOptions {
+    block?: BlockNode
+    shadow?: BlockNode
+    update?: BlockDataNode
+    replace?: BlockNode
+    flush?: boolean
+    clear?: boolean
+}
+
 interface Stores {
     fragments: FragmentsStore
+    shadow: ShadowStore
     document: DocumentStore
     selection: SelectionStore
     format: FormatStore
@@ -127,12 +150,14 @@ export function createEditor(config?: EditorConfig, app?: SplitflowApp) {
 
     const { dispatcher } = app
     const designer = createDesigner({ ...config, remote: true }, undefined, undefined, app.designer)
+    const extension = createExtensionManager()
 
     let fragments: FragmentsStore
-
+    let shadow: ShadowStore
     const stores: Stores = {
         fragments: (fragments = createFragmentsStore()),
-        document: createDocumentStore(fragments),
+        shadow: (shadow = createShadowStore(fragments)),
+        document: createDocumentStore(fragments, shadow),
         selection: createSelectionStore(),
         format: createFormatStore(),
         dragndrop: createDragnDropStore()
@@ -144,7 +169,7 @@ export function createEditor(config?: EditorConfig, app?: SplitflowApp) {
         storage: config.local ? storage(fragments, documentId) : undefined
     }
 
-    return new EditorModule(dispatcher, designer, stores, services, config)
+    return new EditorModule(dispatcher, designer, extension, stores, services, config)
 }
 
 export const createModule = createEditor
@@ -153,12 +178,14 @@ export class EditorModule {
     constructor(
         dispatcher: Dispatcher,
         designer: SplitflowDesigner,
+        extension: ExtensionMananger,
         stores: Stores,
         services: Services,
         config: EditorConfig
     ) {
         this.dispatcher = dispatcher
         this.designer = designer
+        this.extension = extension
         this.stores = stores
         this.services = services
         this.config = config
@@ -171,13 +198,18 @@ export class EditorModule {
         this.dispatcher.addActionHandler('insert', actions.insert, this)
         this.dispatcher.addActionHandler('remove', actions.remove, this)
         this.dispatcher.addActionHandler('replace', actions.replace, this)
+        this.dispatcher.addActionHandler('shadow', actions.shadow, this)
+        this.dispatcher.addActionHandler('prompt', actions.prompt, this)
         this.dispatcher.addActionHandler('mergedata', mergeData)
         this.dispatcher.addActionHandler('open', openFileDialog)
         this.dispatcher.addActionHandler('upload', uploadFile)
+
+        this.extension.addExtension(extensions.highlight)
     }
 
     dispatcher: Dispatcher
     designer: SplitflowDesigner
+    extension: ExtensionMananger
     stores: Stores
     services: Services
     config: EditorConfig
@@ -208,6 +240,8 @@ export class EditorModule {
         this.dispatcher.removeActionHandler('insert', actions.insert, this)
         this.dispatcher.removeActionHandler('remove', actions.remove, this)
         this.dispatcher.removeActionHandler('replace', actions.replace, this)
+        this.dispatcher.removeActionHandler('shadow', actions.shadow, this)
+        this.dispatcher.removeActionHandler('prompt', actions.prompt, this)
         this.dispatcher.removeActionHandler('mergedata', mergeData)
         this.dispatcher.removeActionHandler('open', openFileDialog)
         this.dispatcher.removeActionHandler('upload', uploadFile)
@@ -215,6 +249,11 @@ export class EditorModule {
 
     accept(editor: EditorModule) {
         return editor === this
+    }
+
+    plugin(plugin: (extension: ExtensionMananger) => void) {
+        plugin(this.extension)
+        return this
     }
 
     format(tagName: 'B' | 'I', off = false) {
@@ -256,8 +295,8 @@ export class EditorModule {
         return result?.snapshot
     }
 
-    mergeData<T extends BlockNode>(block1: T, block2: BlockNode): T {
-        const action: MergeDataAction = { type: 'mergedata', block1, block2 }
+    mergeData<T extends BlockNode>(block1: T, block2: BlockNode, options?: MergeDataOptions): T {
+        const action: MergeDataAction = { type: 'mergedata', block1, block2, ...options }
         const result = this.dispatcher.dispatchAction(action, {
             discriminator: this
         }) as MergeResult
@@ -305,13 +344,7 @@ export class EditorModule {
     }
 
     insert(block: BlockNode, options?: InsertOptions) {
-        const action: InsertAction = {
-            type: 'insert',
-            block,
-            before: null,
-            after: null,
-            ...options
-        }
+        const action: InsertAction = { type: 'insert', block, ...options }
         this.dispatcher.dispatchAction(action, { discriminator: this })
     }
 
@@ -320,9 +353,15 @@ export class EditorModule {
         this.dispatcher.dispatchAction(action, { discriminator: this })
     }
 
-    replace(block1: BlockNode, block2: BlockNode) {
-        const action: ReplaceAction = { type: 'replace', block1, block2 }
+    replace(block1: BlockNode, block2: BlockNode, options?: ReplaceOptions) {
+        const action: ReplaceAction = { type: 'replace', block1, block2, ...options }
         this.dispatcher.dispatchAction(action, { discriminator: this })
+    }
+
+    shadow(options?: ShadowOptions) {
+        const action: ShadowAction = { type: 'shadow', ...options }
+        const result = this.dispatcher.dispatchAction(action, { discriminator: this })
+        return result as ShadowResult
     }
 
     openFileDialog(accept: string, close?: (file: File) => void) {
@@ -338,18 +377,14 @@ export class EditorModule {
         return result.promise
     }
 
+    prompt(placeholder: string, run: (value: string) => void) {
+        const action: PromptAction = { type: 'prompt', placeholder, run }
+        this.dispatcher.dispatchAction(action, { discriminator: this })
+    }
+
     get document(): Readable<BlockNode[]> {
         return this.stores.document
     }
-}
-
-export function format(handler: (action: FormatAction) => Result) {
-    const editor = getContext<EditorModule>(EditorModule)
-
-    onMount(() => {
-        editor.dispatcher.addActionHandler('format', handler, editor)
-        return () => editor.dispatcher.removeActionHandler('format', handler, editor)
-    })
 }
 
 export function select(handler: (action: SelectAction) => SelectResult) {
@@ -378,7 +413,6 @@ export function select(handler: (action: SelectAction) => SelectResult) {
     })
 
     afterUpdate(() => {
-        console.log('after update')
         if (afterUpdateAction) {
             handler(afterUpdateAction)
             afterUpdateAction = null
@@ -414,7 +448,6 @@ export function snapshotSelection(
 
     afterUpdate(() => {
         if (afterUpdateSnapshot) {
-            console.log(afterUpdateSnapshot)
             restoreSelectionSnapshot(afterUpdateSnapshot)
             afterUpdateSnapshot = null
         }

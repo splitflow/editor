@@ -2,10 +2,15 @@
 
 <script lang="ts">
     import { createStyle } from '@splitflow/designer/svelte'
-    import { cloneNode } from '../../dom'
-    import { type HeaderNode, isEqual } from '../../document'
-    import { flush } from '../../editor-module'
+    import { type HeaderNode } from '../../document'
+    import { EditorModule } from '../../editor-module'
     import { editableText } from '../../text'
+    import { activateFlushText } from '../../extensions/flush'
+    import { getContext } from 'svelte'
+
+    const style = createStyle('Header')
+
+    const editor = getContext<EditorModule>(EditorModule)
 
     export let block: HeaderNode
     let element: HTMLElement
@@ -14,18 +19,10 @@
         return element
     }
 
-    const style = createStyle('Header')
+    const flushExtension = activateFlushText(editor)
 
-    flush((action) => {
-        if (isEqual(action.block, block)) {
-            const fragment = cloneNode(element, action)
-            const text = fragment.textContent
-            if (action.change && text === block.text) {
-                return { block: null }
-            }
-            return { block: { ...block, text } }
-        }
-    })
+    $: flushExtension.element = element
+    $: flushExtension.block = block
 </script>
 
 <h1

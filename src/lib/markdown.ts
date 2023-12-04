@@ -54,7 +54,7 @@ export class MarkdownParser extends Parser {
         return this.parse(
             tokens,
             [0, tokens.length],
-            this.createParser([this.bold, this.italic, this.text])
+            this.createParser([this.bold, this.italic, this.link, this.text])
         ) as DocumentFragment
     }
 
@@ -108,15 +108,20 @@ export class MarkdownParser extends Parser {
             const position4 = position3 && lookup(tokens, [position3 + 1, range[1]], ')')
 
             if (position4) {
-                const text = grab(tokens, [position1 + 1, position2])
+                const fragment = this.parse(
+                    tokens,
+                    [position1 + 1, position2],
+                    this.createParser([this.bold, this.italic, this.text])
+                )
                 const href = grab(tokens, [position3 + 1, position4])
 
                 const node = this.createElement('a')
                 node.setAttribute('href', href)
+                node.setAttribute('target', '_blank')
                 if (this.style) {
                     node.setAttribute('class', this.style.link())
                 }
-                node.appendChild(this.createTextNode(text))
+                node.appendChild(fragment)
 
                 return [node, position4 + 1]
             }

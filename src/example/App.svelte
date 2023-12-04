@@ -7,6 +7,7 @@
     import style from './assets/style.json'
     import config from './assets/config.json'
     import document from './assets/document.json'
+    import { embed } from '../lib/plugins'
 
     let editorId = localStorage.getItem('editor-id')
     if (!editorId) {
@@ -18,7 +19,9 @@
     }
 
     initializeSplitflowApp({ devtool: true, local: true })
-    const promise = createEditor({ moduleId: editorId, documentId: editorId }).initialize()
+    const promise = createEditor({ moduleId: editorId, documentId: editorId })
+        .plugin(embed())
+        .initialize()
 </script>
 
 {#await promise then { editor, error }}
