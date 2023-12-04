@@ -22,7 +22,8 @@
   "exports": {
     ".": {
       "import": "./dist/index.js",
-      "require": "./dist/index.umd.cjs"
+      "require": "./dist/index.umd.cjs",
+      "types": "./dist/lib/index.d.ts"
     },
     "./svelte": {
       "svelte": "./src/svelte/index.js"
