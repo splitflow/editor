@@ -22,7 +22,14 @@ import type {
 } from './actions'
 import { restoreSelectionSnapshot, type SelectionSnapshot } from './selection-snapshot'
 import type { Readable } from 'svelte/store'
-import { getDefaultApp, type SplitflowApp, type Dispatcher, type Result } from '@splitflow/app'
+import {
+    getDefaultApp,
+    type SplitflowApp,
+    type Dispatcher,
+    type Result,
+    type Gateway,
+    type SplitflowAppKit
+} from '@splitflow/app'
 import {
     openFileDialog,
     uploadFile,
@@ -30,14 +37,27 @@ import {
     type UploadResult,
     type FileDialogAction
 } from './file-upload'
-import { createDesigner, type SplitflowDesigner } from '@splitflow/designer'
+import {
+    createDesigner,
+    createDesignerKit,
+    type SplitflowDesigner,
+    type SplitflowDesignerKit
+} from '@splitflow/designer'
 import gateway from './services/gateway'
 import { storage } from './services/storage'
-import { firstError, type Error } from '@splitflow/lib'
+import { type Error, firstErrorResult, firstError } from '@splitflow/lib'
 import * as extensions from './extensions'
 import { createExtensionManager, type ExtensionMananger } from './extension'
 import type { ShadowStore } from './stores/document/shadow'
 import createShadowStore from './stores/document/shadow'
+import {
+    loadDocumentData,
+    type DocumentData,
+    type DocumentOptions,
+    isDocumentData,
+    type EditorData,
+    loadEditorData
+} from './loaders'
 
 export interface FormatAction {
     type: 'format'
@@ -131,25 +151,29 @@ interface Stores {
 }
 
 interface Services {
-    gateway?: { boot: () => Promise<{ error?: Error }>; destroy: () => void }
-    storage?: { boot: () => Promise<{ error?: Error }>; destroy: () => void }
+    gateway?: () => void
+    storage?: () => void
 }
 
 export interface EditorConfig {
+    accountId?: string
     moduleName?: string
     moduleId?: string
-    documentId?: string
-    documentKey?: string
     local?: boolean
     persistent?: boolean
 }
 
 export function createEditor(config?: EditorConfig, app?: SplitflowApp) {
     app ??= getDefaultApp()
-    config = { ...app.config, moduleName: 'editor', ...config }
+    config = { ...app.config, moduleName: 'Editor', ...config }
 
-    const { dispatcher } = app
-    const designer = createDesigner({ ...config, remote: true }, undefined, undefined, app.designer)
+    const { dispatcher, gateway: _gateway } = app
+    const designer = createDesigner(
+        { ...config, moduleType: 'editor', remote: true },
+        undefined,
+        undefined,
+        app.designer
+    )
     const extension = createExtensionManager()
 
     let fragments: FragmentsStore
@@ -163,13 +187,7 @@ export function createEditor(config?: EditorConfig, app?: SplitflowApp) {
         dragndrop: createDragnDropStore()
     }
 
-    const { documentId, persistent } = config
-    const services: Services = {
-        gateway: !config.local ? gateway(fragments, documentId, persistent) : undefined,
-        storage: config.local ? storage(fragments, documentId) : undefined
-    }
-
-    return new EditorModule(dispatcher, designer, extension, stores, services, config)
+    return new EditorModule(dispatcher, _gateway, designer, extension, stores, config)
 }
 
 export const createModule = createEditor
@@ -177,17 +195,18 @@ export const createModule = createEditor
 export class EditorModule {
     constructor(
         dispatcher: Dispatcher,
+        gateway: Gateway,
         designer: SplitflowDesigner,
         extension: ExtensionMananger,
         stores: Stores,
-        services: Services,
         config: EditorConfig
     ) {
         this.dispatcher = dispatcher
+        this.gateway = gateway
         this.designer = designer
         this.extension = extension
         this.stores = stores
-        this.services = services
+        this.services = {}
         this.config = config
 
         this.dispatcher.addActionHandler('collapse', actions.collapse, this)
@@ -208,6 +227,7 @@ export class EditorModule {
     }
 
     dispatcher: Dispatcher
+    gateway: Gateway
     designer: SplitflowDesigner
     extension: ExtensionMananger
     stores: Stores
@@ -215,22 +235,45 @@ export class EditorModule {
     config: EditorConfig
     #initialize: Promise<{ editor?: EditorModule; error?: Error }>
 
-    async initialize(): Promise<{ editor?: EditorModule; error?: Error }> {
+    async initialize(data?: EditorData): Promise<{ editor?: EditorModule; error?: Error }> {
         return (this.#initialize ??= (async () => {
-            const result1 = await this.designer.initialize()
-            const result2 = await this.services.gateway?.boot()
-            const result3 = await this.services.storage?.boot()
+            data ??= await loadEditorData(this)
 
-            const errorResult = firstError([result1, result2, result3])
-            if (errorResult) return errorResult
+            const error = firstError(data)
+            if (error) return { error }
 
+            this.designer.initialize(data)
             return { editor: this }
         })())
     }
 
+    async updateDocument(data: DocumentData | DocumentOptions): Promise<{ error?: Error }> {
+        data = isDocumentData(data) ? data : await loadDocumentData(this, data)
+
+        const error = firstError(data)
+        if (error) return { error }
+
+        this.services.gateway?.()
+        this.services.storage?.()
+
+        const { document } = data.getDocumentResult
+        this.stores.fragments.init(document)
+
+        if (!this.config.local && this.config.persistent) {
+            this.services.gateway = gateway(this.gateway, this.stores.fragments, {
+                ...this.config,
+                ...data.options
+            })
+        } else if (this.config.local && this.config.persistent) {
+            this.services.storage = storage(this.stores.fragments, data.options)
+        }
+
+        return {}
+    }
+
     destroy() {
-        this.services.gateway?.destroy()
-        this.services.storage?.destroy()
+        this.services.gateway?.()
+        this.services.storage?.()
 
         this.dispatcher.removeActionHandler('collapse', actions.collapse, this)
         this.dispatcher.removeActionHandler('merge', actions.merge, this)
@@ -385,6 +428,29 @@ export class EditorModule {
     get document(): Readable<BlockNode[]> {
         return this.stores.document
     }
+}
+
+export function createEditorKit(config: EditorConfig, app: SplitflowAppKit) {
+    config = { ...app.config, moduleName: 'Editor', ...config }
+
+    const { gateway } = app
+    const designer = createDesignerKit(
+        { ...config, moduleType: 'editor', remote: true },
+        undefined,
+        app.designer
+    )
+
+    return {
+        gateway,
+        designer,
+        config
+    }
+}
+
+export interface EditorKit {
+    gateway: Gateway
+    designer: SplitflowDesignerKit
+    config: EditorConfig
 }
 
 export function select(handler: (action: SelectAction) => SelectResult) {

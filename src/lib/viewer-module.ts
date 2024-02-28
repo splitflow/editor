@@ -2,21 +2,22 @@ import createFragmentsStore, { type FragmentsStore } from './stores/document/fra
 import createDocumentStore, { type DocumentStore } from './stores/document/document'
 import type { BlockNode } from './document'
 import type { Readable } from 'svelte/store'
-import { getDefaultApp, type SplitflowApp } from '@splitflow/app'
+import { createGateway, getDefaultApp, type Gateway, type SplitflowApp } from '@splitflow/app'
 import { createDesigner, type SplitflowDesigner } from '@splitflow/designer'
-import gateway from './services/gateway'
-import { storage } from './services/storage'
-import { firstError, type Error } from '@splitflow/lib'
+import { type Error, firstError } from '@splitflow/lib'
 import { createExtensionManager, type ExtensionMananger } from './extension'
+import {
+    loadEditorData,
+    type EditorData,
+    type DocumentData,
+    type DocumentOptions,
+    loadDocumentData,
+    isDocumentData
+} from './loaders'
 
 interface Stores {
     fragments: FragmentsStore
     document: DocumentStore
-}
-
-interface Services {
-    gateway?: { boot: () => Promise<{ error?: Error }>; destroy: () => void }
-    storage?: { boot: () => Promise<{ error?: Error }>; destroy: () => void }
 }
 
 export interface ViewerConfig {
@@ -31,6 +32,7 @@ export function createViewer(config?: ViewerConfig, app?: SplitflowApp) {
     app ??= getDefaultApp()
     config = { ...app.config, moduleName: 'editor', ...config }
 
+    const gateway = createGateway()
     const designer = createDesigner({ ...config, remote: true }, undefined, undefined, app.designer)
     const extension = createExtensionManager()
 
@@ -41,53 +43,55 @@ export function createViewer(config?: ViewerConfig, app?: SplitflowApp) {
         document: createDocumentStore(fragments)
     }
 
-    const services: Services = {
-        gateway: !config.local ? gateway(fragments, config.documentId) : undefined,
-        storage: config.local ? storage(fragments, config.documentId) : undefined
-    }
-
-    return new ViewerModule(designer, extension, stores, services, config)
+    return new ViewerModule(gateway, designer, extension, stores, config)
 }
 
 export class ViewerModule {
     constructor(
+        gateway: Gateway,
         designer: SplitflowDesigner,
         extension: ExtensionMananger,
         stores: Stores,
-        services: Services,
         config: ViewerConfig
     ) {
+        this.gateway = gateway
         this.designer = designer
-        this.extension = extension,
+        this.extension = extension
         this.stores = stores
-        this.services = services
         this.config = config
     }
 
+    gateway: Gateway
     designer: SplitflowDesigner
     extension: ExtensionMananger
     stores: Stores
-    services: Services
     config: ViewerConfig
     #initialize: Promise<{ viewer?: ViewerModule; error?: Error }>
 
-    async initialize(): Promise<{ viewer?: ViewerModule; error?: Error }> {
+    async initialize(data?: EditorData): Promise<{ viewer?: ViewerModule; error?: Error }> {
         return (this.#initialize ??= (async () => {
-            const result1 = await this.designer.initialize()
-            const result2 = await this.services.gateway?.boot()
-            const result3 = await this.services.storage?.boot()
+            data ??= await loadEditorData(this.config)
 
-            const errorResult = firstError([result1, result2, result3])
-            if (errorResult) return errorResult
+            const error = firstError(data)
+            if (error) return { error }
 
+            this.designer.initialize(data)
             return { viewer: this }
         })())
     }
 
-    destroy() {
-        this.services.gateway?.destroy()
-        this.services.storage?.destroy()
+    async updateDocument(data: DocumentData | DocumentOptions): Promise<{ error?: Error }> {
+        data = isDocumentData(data) ? data : await loadDocumentData(this.gateway, this.config, data)
+
+        const error = firstError(data)
+        if (error) return { error }
+
+        const { document } = data.getDocumentResult
+        this.stores.fragments.init(document)
+        return {}
     }
+
+    destroy() {}
 
     get document(): Readable<BlockNode[]> {
         return this.stores.document
