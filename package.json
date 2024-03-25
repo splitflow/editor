@@ -1,6 +1,6 @@
 {
   "name": "@splitflow/editor",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Splitflow editor",
   "author": "team@splitflow.io",
   "homepage": "https://github.com/splitflow/editor#readme",
@@ -9,7 +9,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/splitflow/editor.git"
+    "url": "git+https://github.com/splitflow/editor.git"
   },
   "type": "module",
   "files": [
@@ -58,10 +58,10 @@
     "vitest": "^0.31.4"
   },
   "dependencies": {
-    "@splitflow/app": "^1.1.0",
-    "@splitflow/core": "file:../core",
+    "@splitflow/app": "^1.2.0",
+    "@splitflow/core": "^2.2.0",
     "@splitflow/css-reset": "^1.1.0",
-    "@splitflow/designer": "^2.1.0",
-    "@splitflow/lib": "^1.1.0"
+    "@splitflow/designer": "^2.2.0",
+    "@splitflow/lib": "^1.2.1"
   }
 }

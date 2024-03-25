@@ -13,19 +13,32 @@
     if (!editorId) {
         editorId = crypto.randomUUID()
         localStorage.setItem('editor-id', editorId)
-        localStorage.setItem(`sf/design/style/${editorId}.node.json`, JSON.stringify(style))
-        localStorage.setItem(`sf/design/config/${editorId}.node.json`, JSON.stringify(config))
-        localStorage.setItem(`sf/editor/document/${editorId}.node.json`, JSON.stringify(document))
+        localStorage.setItem(`sf/accounts/_/pods/${editorId}/style.json`, JSON.stringify(style))
+        localStorage.setItem(`sf/accounts/_/pods/${editorId}/config.json`, JSON.stringify(config))
+        localStorage.setItem(
+            `sf/accounts/_/editors/_/documents/${editorId}/doc.json`,
+            JSON.stringify(document)
+        )
     }
 
     initializeSplitflowApp({ devtool: true, local: true })
-    const promise = createEditor({ moduleId: editorId, documentId: editorId })
-        .plugin(embed())
-        .initialize()
+    const editor = createEditor({ moduleId: editorId }).plugin(embed())
+
+    const promise = (async () => {
+        const { error: error1 } = await editor.initialize()
+        if (error1) return { error: error1 }
+
+        const { error: error2 } = await editor.updateDocument({ documentId: editorId })
+        if (error2) return { error: error2 }
+        
+        return {}
+    })()
 </script>
 
-{#await promise then { editor, error }}
-    {#if editor}
+{#await promise then { error }}
+    {#if error}
+        {error.message}
+    {:else}
         <main>
             <div>
                 <Editor module={editor} />
@@ -34,8 +47,6 @@
                 <Viewer module={editor} />
             </div>
         </main>
-    {:else}
-        {error.message}
     {/if}
 {/await}
 

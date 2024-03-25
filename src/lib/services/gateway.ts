@@ -1,38 +1,41 @@
 import { merge } from '@splitflow/core/utils'
-import { actionRequest, getResult } from '@splitflow/lib'
-import type { GetNodeAction, GetNodeResult, MergeNodeAction } from '@splitflow/lib/editor'
+import { actionRequestX, getResult } from '@splitflow/lib'
+import { type MergeDocumentAction, MergeDocumentEndpoint } from '@splitflow/lib/editor'
 import type { DocumentNode } from '../document'
 import type { FragmentsStore } from '../stores/document/fragments'
+import type { Gateway } from '@splitflow/app'
 
-export default function gateway(fragments: FragmentsStore, documentId: string, persistent = true) {
+export interface GatewayOptions {
+    accountId?: string
+    moduleId?: string
+    documentId?: string
+}
+
+export default function gateway(
+    gateway: Gateway,
+    fragments: FragmentsStore,
+    options: GatewayOptions
+) {
+    const { accountId, moduleId: editorId, documentId } = options
     // service does nothing if no documentId has been configured
-    if (!documentId) return { boot: async () => ({}), destroy: () => {} }
+    if (!accountId || !editorId || !documentId) return undefined
 
     const run = queue()
     let position = 1 // skip server snapshots
-    let unsubscribe1: () => void
-
-    async function boot() {
-        const action: GetNodeAction = { type: 'get-node', documentId }
-        const response = fetch(actionRequest('editor', action))
-        const { node, error } = await getResult<GetNodeResult>(response)
-
-        if (error) return { error }
-
-        fragments.register(node) // register server snapshot
-        if (persistent) {
-            unsubscribe1 = fragments.subscribe(run1)
-        }
-        return {}
-    }
 
     function run1($fragments: DocumentNode[]) {
         run(async () => {
-            const node = mergeFragments($fragments.slice(position))
+            const document = mergeFragments($fragments.slice(position))
 
-            if (node) {
-                const action: MergeNodeAction = { type: 'merge-node', documentId, node }
-                const response = fetch(actionRequest('editor', action))
+            if (document) {
+                const action: MergeDocumentAction = {
+                    type: 'merge-document',
+                    accountId,
+                    editorId,
+                    documentId,
+                    document
+                }
+                const response = gateway.fetch(actionRequestX(action, MergeDocumentEndpoint))
                 await getResult(response)
             }
 
@@ -40,12 +43,8 @@ export default function gateway(fragments: FragmentsStore, documentId: string, p
         })
     }
 
-    return {
-        boot,
-        destroy: () => {
-            unsubscribe1?.()
-        }
-    }
+    const unsubscribe1 = fragments.subscribe(run1)
+    return () => unsubscribe1()
 }
 
 function mergeFragments(fragments: DocumentNode[]) {

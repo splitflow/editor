@@ -4,10 +4,11 @@ import type { DocumentNode } from '../../document'
 export interface FragmentsStore extends Readable<DocumentNode[]> {
     push: (fragment: DocumentNode) => void
     register: (fragment: DocumentNode) => void
+    init: (fragment: DocumentNode) => void
 }
 
 export default function createFragmentsStore(): FragmentsStore {
-    const { subscribe, update } = writable<DocumentNode[]>([
+    const { subscribe, update, set } = writable<DocumentNode[]>([
         {} // server fragment
     ])
 
@@ -23,5 +24,9 @@ export default function createFragmentsStore(): FragmentsStore {
         }
     }
 
-    return { subscribe, push, register }
+    function init(fragment: DocumentNode) {
+        set([fragment ?? {}])
+    }
+
+    return { subscribe, push, register, init }
 }
