@@ -7,12 +7,12 @@ import { createDesigner, type SplitflowDesigner } from '@splitflow/designer'
 import { type Error, firstError } from '@splitflow/lib'
 import { createExtensionManager, type ExtensionMananger } from './extension'
 import {
-    loadEditorData,
-    type EditorData,
-    type DocumentData,
+    loadEditorBundle,
+    type EditorBundle,
+    type DocumentBundle,
     type DocumentOptions,
-    loadDocumentData,
-    isDocumentData
+    loadDocumentBundle,
+    isDocumentBundle
 } from './loaders'
 
 interface Stores {
@@ -68,9 +68,9 @@ export class ViewerModule {
     config: ViewerConfig
     #initialize: Promise<{ viewer?: ViewerModule; error?: Error }>
 
-    async initialize(data?: EditorData): Promise<{ viewer?: ViewerModule; error?: Error }> {
+    async initialize(data?: EditorBundle): Promise<{ viewer?: ViewerModule; error?: Error }> {
         return (this.#initialize ??= (async () => {
-            data ??= await loadEditorData(this.config)
+            data ??= await loadEditorBundle(this.config)
 
             const error = firstError(data)
             if (error) return { error }
@@ -80,8 +80,8 @@ export class ViewerModule {
         })())
     }
 
-    async updateDocument(data: DocumentData | DocumentOptions): Promise<{ error?: Error }> {
-        data = isDocumentData(data) ? data : await loadDocumentData(this.gateway, this.config, data)
+    async updateDocument(data: DocumentBundle | DocumentOptions): Promise<{ error?: Error }> {
+        data = isDocumentBundle(data) ? data : await loadDocumentBundle(this.gateway, this.config, data)
 
         const error = firstError(data)
         if (error) return { error }

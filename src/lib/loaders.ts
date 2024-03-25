@@ -4,16 +4,23 @@ import {
     type GetDocumentAction,
     type GetDocumentResult
 } from '@splitflow/lib/editor'
-import type { EditorKit } from './editor-module'
-import { loadSplitflowDesignerData, type SplitflowDesignerData } from '@splitflow/designer'
+import type { EditorConfig, EditorKit } from './editor-module'
+import { loadSplitflowDesignerBundle, type DesignerBundle } from '@splitflow/designer'
 
-export interface EditorData extends SplitflowDesignerData {}
-
-export function loadEditorData(kit: EditorKit) {
-    return loadSplitflowDesignerData(kit.designer)
+export interface EditorBundle extends DesignerBundle {
+    config: EditorConfig
 }
 
-export interface DocumentData {
+export function isEditorBundle(bundle: EditorBundle | EditorConfig): bundle is EditorBundle {
+    return !!(bundle as any).config
+}
+
+export async function loadEditorBundle(kit: EditorKit): Promise<EditorBundle> {
+    const bundle1 = await loadSplitflowDesignerBundle(kit.designer)
+    return { config: kit.config, ...bundle1 }
+}
+
+export interface DocumentBundle {
     options: DocumentOptions
     getDocumentResult?: GetDocumentResult
 }
@@ -22,22 +29,24 @@ export interface DocumentOptions {
     documentId: string
 }
 
-export function isDocumentData(data: DocumentData | DocumentOptions): data is DocumentData {
-    return !!(data as any).getDocumentResult
+export function isDocumentBundle(
+    bundle: DocumentBundle | DocumentOptions
+): bundle is DocumentBundle {
+    return !!(bundle as any).getDocumentResult
 }
 
-export async function loadDocumentData(
+export async function loadDocumentBundle(
     kit: EditorKit,
     options: DocumentOptions
-): Promise<DocumentData> {
-    if (kit.config.local) return loadLocalDocumentData(options)
-    return loadRemoteDocumentData(kit, options)
+): Promise<DocumentBundle> {
+    if (kit.config.local) return loadLocalDocumentBundle(options)
+    return loadRemoteDocumentBundle(kit, options)
 }
 
-async function loadRemoteDocumentData(
+async function loadRemoteDocumentBundle(
     kit: EditorKit,
     options: DocumentOptions
-): Promise<DocumentData> {
+): Promise<DocumentBundle> {
     const { accountId, moduleId: editorId } = kit.config
     const { documentId } = options
 
@@ -50,7 +59,7 @@ async function loadRemoteDocumentData(
     return { options }
 }
 
-async function loadLocalDocumentData(options: DocumentOptions): Promise<DocumentData> {
+async function loadLocalDocumentBundle(options: DocumentOptions): Promise<DocumentBundle> {
     const { documentId } = options
 
     if (documentId) {
@@ -62,12 +71,12 @@ async function loadLocalDocumentData(options: DocumentOptions): Promise<Document
         if (document) {
             return { options, getDocumentResult: { document } }
         }
-        
+
         const error: GetDocumentResult['error'] = {
             code: 'unknown-document',
             message: "we didn't find your document"
         }
         return { options, getDocumentResult: { error } }
     }
-    return { options, getDocumentResult: undefined }
+    return { options }
 }
