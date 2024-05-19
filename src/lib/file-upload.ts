@@ -1,4 +1,4 @@
-import type { DialogAction } from '@splitflow/app'
+import type { DialogAction, Result } from '@splitflow/app'
 
 export interface FileDialogAction extends DialogAction {
     accept: string
@@ -30,7 +30,7 @@ export interface UploadAction {
     file: File
 }
 
-export interface UploadResult {
+export interface UploadResult extends Result {
     promise: Promise<string>
 }
 

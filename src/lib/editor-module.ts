@@ -56,8 +56,8 @@ import {
     type DocumentOptions,
     isDocumentBundle,
     type EditorBundle,
-    loadEditorBundle,
-    isEditorBundle
+    isEditorBundle,
+    isFulfilled
 } from './loaders'
 
 export interface FormatAction {
@@ -81,7 +81,7 @@ export interface SelectAction {
     restoreAfterUpdate: boolean
 }
 
-export interface SelectResult {
+export interface SelectResult extends Result {
     snapshot?: SelectionSnapshot
 }
 
@@ -98,7 +98,7 @@ export interface SnapshotSelectionAction {
     restoreAfterUpdate: boolean
 }
 
-export interface SnapshotSelectionResult {
+export interface SnapshotSelectionResult extends Result {
     snapshot?: SelectionSnapshot
 }
 
@@ -120,7 +120,7 @@ export interface FlushAction {
     change: boolean
 }
 
-export interface FlushResult {
+export interface FlushResult extends Result {
     block: BlockNode
 }
 
@@ -256,25 +256,32 @@ export class EditorModule {
         })())
     }
 
-    async updateDocument(data: DocumentBundle | DocumentOptions): Promise<{ error?: Error }> {
-        data = isDocumentBundle(data) ? data : await loadDocumentBundle(this, data)
+    async updateDocument(bundle: DocumentBundle | DocumentOptions): Promise<{ error?: Error }> {
+        if (isDocumentBundle(bundle)) {
+            bundle = isFulfilled(bundle) ? bundle : await loadDocumentBundle(this, bundle.options)
+        } else {
+            bundle = await loadDocumentBundle(this, bundle)
+        }
 
-        const error = firstError(data)
+        const error = firstError(bundle)
         if (error) return { error }
 
-        this.services.gateway?.()
-        this.services.storage?.()
+        if (bundle.getDocResult) {
+            this.services.gateway?.()
+            this.services.storage?.()
 
-        const { document } = data.getDocumentResult
-        this.stores.fragments.init(document)
+            const { doc } = bundle.getDocResult
+            this.stores.fragments.init(doc)
+            this.stores.shadow.clear()
 
-        if (!this.config.local && (this.config.persistent ?? true)) {
-            this.services.gateway = gateway(this.gateway, this.stores.fragments, {
-                ...this.config,
-                ...data.options
-            })
-        } else if (this.config.local && (this.config.persistent ?? true)) {
-            this.services.storage = storage(this.stores.fragments, data.options)
+            if (!this.config.local && (this.config.persistent ?? true)) {
+                this.services.gateway = gateway(this.gateway, this.stores.fragments, {
+                    ...this.config,
+                    ...bundle.options
+                })
+            } else if (this.config.local && (this.config.persistent ?? true)) {
+                this.services.storage = storage(this.stores.fragments, bundle.options)
+            }
         }
 
         return {}

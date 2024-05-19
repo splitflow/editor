@@ -1,3 +1,4 @@
+import type { Result } from '@splitflow/app'
 import { type BlockNode, createSpacerBlock } from './document'
 import { MarkdownParser, MarkdownTokenizer, TextEmitter } from './markdown'
 
@@ -34,7 +35,7 @@ export interface MergeDataAction {
     fallback?: boolean
 }
 
-export interface MergeResult {
+export interface MergeResult extends Result {
     block: BlockNode
 }
 

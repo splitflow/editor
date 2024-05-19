@@ -209,7 +209,7 @@ export interface ShadowAction {
     clear?: boolean
 }
 
-export interface ShadowResult {
+export interface ShadowResult extends Result {
     block?: BlockNode
 }
 

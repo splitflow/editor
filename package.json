@@ -61,7 +61,7 @@
     "@splitflow/app": "^1.2.0",
     "@splitflow/core": "^2.2.0",
     "@splitflow/css-reset": "^1.1.0",
-    "@splitflow/designer": "^2.2.0",
-    "@splitflow/lib": "^1.2.1"
+    "@splitflow/designer": "file:../designer",
+    "@splitflow/lib": "file:../lib"
   }
 }

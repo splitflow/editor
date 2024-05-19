@@ -2,17 +2,18 @@ import createFragmentsStore, { type FragmentsStore } from './stores/document/fra
 import createDocumentStore, { type DocumentStore } from './stores/document/document'
 import type { BlockNode } from './document'
 import type { Readable } from 'svelte/store'
-import { createGateway, getDefaultApp, type Gateway, type SplitflowApp } from '@splitflow/app'
+import { getDefaultApp, type Gateway, type SplitflowApp } from '@splitflow/app'
 import { createDesigner, type SplitflowDesigner } from '@splitflow/designer'
 import { type Error, firstError } from '@splitflow/lib'
 import { createExtensionManager, type ExtensionMananger } from './extension'
 import {
-    loadEditorBundle,
     type EditorBundle,
     type DocumentBundle,
     type DocumentOptions,
     loadDocumentBundle,
-    isDocumentBundle
+    isDocumentBundle,
+    isFulfilled,
+    isEditorBundle
 } from './loaders'
 
 interface Stores {
@@ -28,22 +29,30 @@ export interface ViewerConfig {
     local?: boolean
 }
 
-export function createViewer(config?: ViewerConfig, app?: SplitflowApp) {
+export function createViewer(init: ViewerConfig | EditorBundle, app?: SplitflowApp) {
     app ??= getDefaultApp()
-    config = { ...app.config, moduleName: 'editor', ...config }
 
-    const gateway = createGateway()
-    const designer = createDesigner({ ...config, remote: true }, undefined, undefined, app.designer)
+    const bundle = isEditorBundle(init) ? init : undefined
+    const config = isEditorBundle(init)
+        ? init.config
+        : { ...app.config, moduleName: 'Editor', ...init }
+
+    const { gateway } = app
+    const designer = createDesigner(
+        bundle ?? { ...config, moduleType: 'editor', remote: true },
+        undefined,
+        undefined,
+        app.designer
+    )
     const extension = createExtensionManager()
 
     let fragments: FragmentsStore
-
     const stores: Stores = {
         fragments: (fragments = createFragmentsStore()),
         document: createDocumentStore(fragments)
     }
 
-    return new ViewerModule(gateway, designer, extension, stores, config)
+    return new ViewerModule(gateway, designer, extension, stores, config, bundle)
 }
 
 export class ViewerModule {
@@ -52,13 +61,15 @@ export class ViewerModule {
         designer: SplitflowDesigner,
         extension: ExtensionMananger,
         stores: Stores,
-        config: ViewerConfig
+        config: ViewerConfig,
+        bundle: EditorBundle
     ) {
         this.gateway = gateway
         this.designer = designer
         this.extension = extension
         this.stores = stores
         this.config = config
+        this.bundle = bundle
     }
 
     gateway: Gateway
@@ -66,28 +77,37 @@ export class ViewerModule {
     extension: ExtensionMananger
     stores: Stores
     config: ViewerConfig
-    #initialize: Promise<{ viewer?: ViewerModule; error?: Error }>
+    bundle: EditorBundle
 
-    async initialize(data?: EditorBundle): Promise<{ viewer?: ViewerModule; error?: Error }> {
+    #initialize: Promise<{ editor?: ViewerModule; error?: Error }>
+
+    async initialize(): Promise<{ editor?: ViewerModule; error?: Error }> {
         return (this.#initialize ??= (async () => {
-            data ??= await loadEditorBundle(this.config)
+            // editor bundle contains only designer data for now
+            // designer will do the loading itself if no bundle as been pre-fetched
 
-            const error = firstError(data)
+            const { error } = await this.designer.initialize()
             if (error) return { error }
 
-            this.designer.initialize(data)
-            return { viewer: this }
+            this.bundle = undefined
+            return { editor: this }
         })())
     }
 
-    async updateDocument(data: DocumentBundle | DocumentOptions): Promise<{ error?: Error }> {
-        data = isDocumentBundle(data) ? data : await loadDocumentBundle(this.gateway, this.config, data)
+    async updateDocument(bundle: DocumentBundle | DocumentOptions): Promise<{ error?: Error }> {
+        if (isDocumentBundle(bundle)) {
+            bundle = isFulfilled(bundle) ? bundle : await loadDocumentBundle(this, bundle.options)
+        } else {
+            bundle = await loadDocumentBundle(this, bundle)
+        }
 
-        const error = firstError(data)
+        const error = firstError(bundle)
         if (error) return { error }
 
-        const { document } = data.getDocumentResult
-        this.stores.fragments.init(document)
+        if (bundle.getDocResult) {
+            const { doc } = bundle.getDocResult
+            this.stores.fragments.init(doc)
+        }
         return {}
     }
 

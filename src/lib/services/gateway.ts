@@ -1,6 +1,6 @@
 import { merge } from '@splitflow/core/utils'
 import { actionRequestX, getResult } from '@splitflow/lib'
-import { type MergeDocumentAction, MergeDocumentEndpoint } from '@splitflow/lib/editor'
+import { type MergeDocAction, MergeDocEndpoint } from '@splitflow/lib/editor'
 import type { DocumentNode } from '../document'
 import type { FragmentsStore } from '../stores/document/fragments'
 import type { Gateway } from '@splitflow/app'
@@ -25,17 +25,17 @@ export default function gateway(
 
     function run1($fragments: DocumentNode[]) {
         run(async () => {
-            const document = mergeFragments($fragments.slice(position))
+            const doc = mergeFragments($fragments.slice(position))
 
-            if (document) {
-                const action: MergeDocumentAction = {
-                    type: 'merge-document',
+            if (doc) {
+                const action: MergeDocAction = {
+                    type: 'merge-doc',
                     accountId,
                     editorId,
                     documentId,
-                    document
+                    doc
                 }
-                const response = gateway.fetch(actionRequestX(action, MergeDocumentEndpoint))
+                const response = gateway.fetch(actionRequestX(action, MergeDocEndpoint))
                 await getResult(response)
             }
 

@@ -35,6 +35,12 @@ export default function createDocumentStore(
 
     const { subscribe } = writable<BlockNode[]>(value, (set) => {
         const unsubscribe1 = fragments.subscribe(($fragments) => {
+            if ($fragments.length === 1) {
+                // init
+                fragmentsSnapshot = undefined
+                position = 0
+            }
+
             fragmentsSnapshot = snapshotFragments(fragmentsSnapshot, $fragments.slice(position))
             position = $fragments.length
             set((value = fromSnapshots(fragmentsSnapshot, shadowSnapshot)))

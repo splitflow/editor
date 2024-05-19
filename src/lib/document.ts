@@ -1,3 +1,5 @@
+import { isEmpty } from "@splitflow/core/utils"
+
 export interface DocumentNode {
     [key: string]: BlockDataNode
 }
@@ -123,6 +125,15 @@ export function createImageBlock(src: string): ImageNode {
         blockId: crypto.randomUUID(),
         position: 10e8,
         src
+    }
+}
+
+export function createDocument(document?: DocumentNode) {
+    if (!isEmpty(document)) return document
+
+    const block = createParagraphBlock()
+    return {
+        [key(block)]: data(block)
     }
 }
 

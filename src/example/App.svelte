@@ -6,8 +6,9 @@
     import { createEditor } from '../lib/editor-module'
     import style from './assets/style.json'
     import config from './assets/config.json'
-    import document from './assets/document.json'
+    import doc from './assets/doc.json'
     import { embed } from '../lib/plugins'
+    import { idb, schema } from '../lib'
 
     let editorId = localStorage.getItem('editor-id')
     if (!editorId) {
@@ -15,10 +16,11 @@
         localStorage.setItem('editor-id', editorId)
         localStorage.setItem(`sf/accounts/_/pods/${editorId}/style.json`, JSON.stringify(style))
         localStorage.setItem(`sf/accounts/_/pods/${editorId}/config.json`, JSON.stringify(config))
-        localStorage.setItem(
-            `sf/accounts/_/editors/_/documents/${editorId}/doc.json`,
-            JSON.stringify(document)
-        )
+        ;(async () => {
+            const db = await idb(indexedDB.open('sf-editor'), schema)
+            const tx = db.transaction('doc', 'readwrite')
+            tx.objectStore('doc').add(doc, `accounts/_/editors/_/documents/${editorId}/doc`)
+        })()
     }
 
     initializeSplitflowApp({ devtool: true, local: true })
@@ -30,7 +32,7 @@
 
         const { error: error2 } = await editor.updateDocument({ documentId: editorId })
         if (error2) return { error: error2 }
-        
+
         return {}
     })()
 </script>
