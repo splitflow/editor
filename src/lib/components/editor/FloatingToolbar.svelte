@@ -1,5 +1,5 @@
 <script lang="ts">
-    import { createStyle, createConfig } from '@splitflow/designer/svelte'
+    import { createStyle, createConfig } from '@splitflow/designer'
     import { svg } from '@splitflow/designer/svelte'
     import { getContext } from 'svelte'
     import { EditorModule } from '../../editor-module'
@@ -8,11 +8,11 @@
     import { readBlockType, readSelection } from '../../stores/document/selection'
     import { rangeTooltip } from '../toolkit/actions'
 
-    const style = createStyle('FloatingToolbar')
-    const config = createConfig('FloatingToolbar')
-
     const editor = getContext<EditorModule>(EditorModule)
     const { selection, format } = editor.stores
+
+    const style = createStyle('FloatingToolbar', editor.designer)
+    const config = createConfig('FloatingToolbar', editor.designer)
 
     $: formatData = readFormat($format)
     $: blockTypeData = readBlockType($selection, isNotVoidNode)

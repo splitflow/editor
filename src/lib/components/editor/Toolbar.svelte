@@ -1,5 +1,6 @@
 <script lang="ts">
-    import { createStyle, createConfig, svg } from '@splitflow/designer/svelte'
+    import { createStyle, createConfig } from '@splitflow/designer'
+    import { svg }  from '@splitflow/designer/svelte'
     import { getContext } from 'svelte'
     import { EditorModule } from '../../editor-module'
     import {
@@ -13,11 +14,11 @@
     import { readBlockType, readSelection } from '../../stores/document/selection'
     import { activateComponentExtensions, toolbarExtension } from '../../extension'
 
-    const style = createStyle('Toolbar')
-    const config = createConfig('Toolbar')
-
     const editor = getContext<EditorModule>(EditorModule)
     const { selection, format, fragments } = editor.stores
+
+    const style = createStyle('Toolbar', editor.designer)
+    const config = createConfig('Toolbar', editor.designer)
 
     const extensions = activateComponentExtensions(
         editor.extension.match(toolbarExtension('main')),

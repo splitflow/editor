@@ -1,10 +1,14 @@
 <script lang="ts">
-    import { createStyle } from '@splitflow/designer/svelte'
+    import { getContext } from 'svelte'
+    import { createStyle } from '@splitflow/designer'
     import { type ImageNode } from '../../document'
+    import { ViewerModule } from '../../viewer-module'
 
     export let block: ImageNode
 
-    const style = createStyle('Image')
+    const viewer = getContext<ViewerModule>(ViewerModule)
+
+    const style = createStyle('Image', viewer.designer)
 </script>
 
 <figure class={style.root()}>

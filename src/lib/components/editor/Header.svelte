@@ -1,16 +1,16 @@
 <svelte:options immutable={true} />
 
 <script lang="ts">
-    import { createStyle } from '@splitflow/designer/svelte'
+    import { createStyle } from '@splitflow/designer'
     import { type HeaderNode } from '../../document'
     import { EditorModule } from '../../editor-module'
     import { editableText } from '../../text'
     import { activateFlushText } from '../../extensions/flush'
     import { getContext } from 'svelte'
 
-    const style = createStyle('Header')
-
     const editor = getContext<EditorModule>(EditorModule)
+
+    const style = createStyle('Header', editor.designer)
 
     export let block: HeaderNode
     let element: HTMLElement

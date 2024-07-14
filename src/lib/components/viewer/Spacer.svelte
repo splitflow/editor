@@ -1,9 +1,13 @@
 <svelte:options immutable={true} />
 
 <script lang="ts">
-    import { createStyle } from '@splitflow/designer/svelte'
+    import { getContext } from 'svelte'
+    import { createStyle } from '@splitflow/designer'
+    import { ViewerModule } from '../../viewer-module'
 
-    const style = createStyle('Spacer')
+    const viewer = getContext<ViewerModule>(ViewerModule)
+
+    const style = createStyle('Spacer', viewer.designer)
 </script>
 
 <p class={style.root()}>

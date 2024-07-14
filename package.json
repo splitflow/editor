@@ -1,67 +1,84 @@
 {
-  "name": "@splitflow/editor",
-  "version": "1.1.0",
-  "description": "Splitflow editor",
-  "author": "team@splitflow.io",
-  "homepage": "https://github.com/splitflow/editor#readme",
-  "bugs": {
-    "url": "https://github.com/splitflow/editor/issues"
-  },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/splitflow/editor.git"
-  },
-  "type": "module",
-  "files": [
-    "dist/**/*.js",
-    "dist/**/*.cjs",
-    "dist/**/*.d.ts",
-    "src/svelte/**/*.js",
-    "src/svelte/**/*.svelte"
-  ],
-  "exports": {
-    ".": {
-      "import": "./dist/index.js",
-      "require": "./dist/index.umd.cjs",
-      "types": "./dist/lib/index.d.ts"
-    },
-    "./svelte": {
-      "svelte": "./src/svelte/index.js"
-    }
-  },
-  "typesVersions": {
-    "*": {
-      "*": [
-        "dist/lib/index.d.ts"
-      ]
-    }
-  },
-  "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "preview": "vite preview",
-    "check": "svelte-check --tsconfig ./tsconfig.json",
-    "test": "vitest"
-  },
-  "devDependencies": {
-    "@sveltejs/vite-plugin-svelte": "^2.0.3",
-    "@tsconfig/svelte": "^4.0.1",
-    "prettier": "^3.0.1",
-    "prettier-plugin-svelte": "^3.0.3",
-    "svelte": "^3.57.0",
-    "svelte-check": "^2.10.3",
-    "tslib": "^2.5.0",
-    "typescript": "^5.0.2",
-    "vite": "^4.3.2",
-    "vite-plugin-css-injected-by-js": "^3.3.0",
-    "vite-plugin-dts": "^3.2.0",
-    "vitest": "^0.31.4"
-  },
-  "dependencies": {
-    "@splitflow/app": "^1.2.0",
-    "@splitflow/core": "^2.2.0",
-    "@splitflow/css-reset": "^1.1.0",
-    "@splitflow/designer": "^2.2.0",
-    "@splitflow/lib": "^1.2.1"
-  }
+	"name": "@splitflow/editor",
+	"version": "1.2.0",
+	"description": "Splitflow editor",
+	"author": "team@splitflow.io",
+	"homepage": "https://github.com/splitflow/editor#readme",
+	"bugs": {
+		"url": "https://github.com/splitflow/editor/issues"
+	},
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/splitflow/editor.git"
+	},
+	"type": "module",
+	"sideEffects": false,
+	"files": [
+		"dist",
+		"dist-js"
+	],
+	"exports": {
+		".": {
+			"types": "./dist-js/index.d.ts",
+			"svelte": "./dist/index.js",
+			"import": "./dist-js/index.js",
+			"require": "./dist-js/index.cjs"
+		},
+		"./ssr": {
+			"types": "./dist-js/ssr.d.ts",
+			"import": "./dist-js/ssr.js",
+			"require": "./dist-js/ssr.cjs"
+		}
+	},
+	"typesVersions": {
+		"*": {
+			"*": [
+				"dist-js/index.d.ts"
+			],
+			"ssr": [
+				"dist-js/ssr.d.ts"
+			]
+		}
+	},
+	"svelte": "./dist/index.js",
+	"types": "./dist/index.d.ts",
+	"scripts": {
+		"dev": "vite dev",
+		"build": "vite build && npm run package",
+		"build:js": "vite build --config vite.config.js.ts && vite build --config vite.config.js.ts --ssr",
+		"preview": "vite preview",
+		"package": "svelte-kit sync && svelte-package && publint",
+		"prepublishOnly": "npm run package",
+		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
+		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
+		"test": "vitest",
+		"lint": "prettier --check .",
+		"format": "prettier --write ."
+	},
+	"peerDependencies": {
+		"svelte": "^4.0.0"
+	},
+	"devDependencies": {
+		"@sveltejs/adapter-auto": "^3.0.0",
+		"@sveltejs/kit": "^2.0.0",
+		"@sveltejs/package": "^2.0.0",
+		"@sveltejs/vite-plugin-svelte": "^3.0.0",
+		"prettier": "^3.1.1",
+		"prettier-plugin-svelte": "^3.1.2",
+		"publint": "^0.1.9",
+		"svelte": "^4.2.7",
+		"svelte-check": "^3.6.0",
+		"tslib": "^2.4.1",
+		"typescript": "^5.0.0",
+		"vite": "^5.0.11",
+		"vite-plugin-dts": "^3.9.1",
+		"vitest": "^1.2.0"
+	},
+	"dependencies": {
+		"@splitflow/app": "^1.2.0",
+		"@splitflow/core": "^2.2.0",
+		"@splitflow/css-reset": "^1.1.0",
+		"@splitflow/designer": "^2.2.0",
+		"@splitflow/lib": "^1.2.1"
+	}
 }

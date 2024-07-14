@@ -1,13 +1,17 @@
 <svelte:options immutable={true} />
 
 <script lang="ts">
-    import { createStyle } from '@splitflow/designer/svelte'
+    import { getContext } from 'svelte'
+    import { createStyle } from '@splitflow/designer'
     import { type HeaderNode } from '../../document'
     import { editableText } from '../../text'
+	import { ViewerModule } from '../../viewer-module'
 
     export let block: HeaderNode
 
-    const style = createStyle('Header')
+    const viewer = getContext<ViewerModule>(ViewerModule)
+
+    const style = createStyle('Header', viewer.designer)
 </script>
 
 <h1 class={style.root()} use:editableText={block.text}>

@@ -20,11 +20,11 @@ interface TextNode {
 }
 
 function isMarkdownNode(block: BlockNode): block is MarkdownNode {
-    return (block as any)?.markdown !== undefined ?? false
+    return (block as any)?.markdown !== undefined
 }
 
 function isTextNode(block: BlockNode): block is TextNode {
-    return (block as any)?.text !== undefined ?? false
+    return (block as any)?.text !== undefined
 }
 
 export interface MergeDataAction {

@@ -1,11 +1,15 @@
 <svelte:options immutable={true} />
 
 <script lang="ts">
-    import { createStyle } from '@splitflow/designer/svelte'
+    import { getContext } from 'svelte'
+    import { createStyle } from '@splitflow/designer'
     import { type ListItemNode } from '../../document'
     import { editableMarkdown } from '../../markdown'
+    import { ViewerModule } from '../../viewer-module'
 
-    const style = createStyle('ListItem')
+    const viewer = getContext<ViewerModule>(ViewerModule)
+
+    const style = createStyle('ListItem', viewer.designer)
 
     export let block: ListItemNode
 </script>

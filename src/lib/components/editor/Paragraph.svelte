@@ -2,7 +2,7 @@
 
 <script lang="ts">
     import { getContext } from 'svelte'
-    import { createConfig, createStyle } from '@splitflow/designer/svelte'
+    import { createConfig, createStyle } from '@splitflow/designer'
     import { EditorModule } from '../../editor-module'
     import { createSpacerBlock, type ParagraphNode } from '../../document'
     import { editableMarkdown } from '../../markdown'
@@ -10,10 +10,10 @@
     import { activateFormat } from '../../extensions/format'
     import { activateFlushMarkdown } from '../../extensions/flush'
 
-    const style = createStyle('Paragraph')
-    const config = createConfig('Paragraph')
-
     const editor = getContext<EditorModule>(EditorModule)
+
+    const style = createStyle('Paragraph', editor.designer)
+    const config = createConfig('Paragraph', editor.designer)
 
     export let block: ParagraphNode
     export const getElement = () => element

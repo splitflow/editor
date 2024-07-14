@@ -6,6 +6,7 @@ export function windowSelectionRange(listener: (selectionRange: Range) => void) 
     let collapsed: boolean
 
     onMount(() => {
+        console.log('MOUNT')
         function selectionchange() {
             const selection = window.getSelection()
             const selectionRange = selection.getRangeAt(0)

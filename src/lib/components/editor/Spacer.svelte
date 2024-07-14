@@ -1,15 +1,15 @@
 <script lang="ts">
     import { getContext } from 'svelte'
-    import { createStyle } from '@splitflow/designer/svelte'
+    import { createStyle } from '@splitflow/designer'
     import { type SpacerNode, createParagraphBlock, createListItemBlock } from '../../document'
     import { EditorModule } from '../../editor-module'
     import { activateFlushVoid } from '../../extensions/flush'
     import { createUnselect } from '../../stores/document/selection'
 
-    const style = createStyle('Spacer')
-
     const editor = getContext<EditorModule>(EditorModule)
     const { selection } = editor.stores
+
+    const style = createStyle('Spacer', editor.designer)
 
     export let block: SpacerNode
     export const getElement = () => element

@@ -2,7 +2,7 @@
 
 <script lang="ts">
     import { getContext } from 'svelte'
-    import { createStyle } from '@splitflow/designer/svelte'
+    import { createStyle } from '@splitflow/designer'
     import { EditorModule } from '../../editor-module'
     import {
         createListItemBlock,
@@ -15,9 +15,9 @@
     import { activateFlushMarkdown } from '../../extensions/flush'
     import { activateFormat } from '../../extensions/format'
 
-    const style = createStyle('ListItem')
-
     const editor = getContext<EditorModule>(EditorModule)
+
+    const style = createStyle('ListItem', editor.designer)
 
     export let block: ListItemNode
     let element: HTMLElement
