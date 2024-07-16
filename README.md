@@ -1,58 +1,44 @@
-# create-svelte
+# SF Text Editor
 
-Everything you need to build a Svelte library, powered by [`create-svelte`](https://github.com/sveltejs/kit/tree/main/packages/create-svelte).
+ [SplitFlow Text Editor](https://splitflow.io/editor) is a fully featured web module including state management and data persistence. It is easily styled and configured with the SF no-code design tool and can be integrated in any web app with just a few lines of code.
 
-Read more about creating a library [in the docs](https://kit.svelte.dev/docs/packaging).
+- :heart: No-code for UI designers and developers.
+- :sparkles: JS Framework agnostic with SSR support.
+- :snowflake: Embedded into your app.
+- :zap: Real time styling and configuration.
 
-## Creating a project
+![SplitFlow Text Editor](https://github.com/splitflow/editor/blob/master/static/editor.png?raw=true)
 
-If you're seeing this, you've probably already done this step. Congrats!
+## Start building
 
-```bash
-# create a new project in the current directory
-npm create svelte@latest
+The Splitflow Design App allows to style and configure web modules with no coding skills. Start building your own [text editor](https://design.splitflow.io/_/editor).
 
-# create a new project in my-app
-npm create svelte@latest my-app
-```
+## Integrate into your app
 
-## Developing
-
-Once you've created a project and installed dependencies with `npm install` (or `pnpm install` or `yarn`), start a development server:
+SF Text Editor is built with Svelte and can be embedded into any JS project. Below is a minimal React integration.
 
 ```bash
-npm run dev
-
-# or start the server and open the app in a new browser tab
-npm run dev -- --open
+npm i @splitflow/editor @splitflow/react
 ```
 
-Everything inside `src/lib` is part of your library, everything inside `src/routes` can be used as a showcase or preview app.
+```ts
+import { useState } from 'react'
+import { createEditor, embed } from '@splitflow/editor'
+import { Editor } from '@splitflow/react'
 
-## Building
+export function MyComponent() {
+    const [editor] = useState(() => {
+        const editor = createEditor({
+            accountId: '<your-account-id>',
+            moduleId: '<your-module-id>'
+        }).plugin(embed())
+        editor.initialize()
+        return editor
+    })
 
-To build your library:
-
-```bash
-npm run package
+    return <Editor module={editor} />
+}
 ```
 
-To create a production version of your showcase app:
-
-```bash
-npm run build
-```
-
-You can preview the production build with `npm run preview`.
-
-> To deploy your app, you may need to install an [adapter](https://kit.svelte.dev/docs/adapters) for your target environment.
-
-## Publishing
-
-Go into the `package.json` and give your package the desired name through the `"name"` option. Also consider adding a `"license"` field and point it to a `LICENSE` file which you can create from a template (one popular option is the [MIT license](https://opensource.org/license/mit/)).
-
-To publish your library to [npm](https://www.npmjs.com):
-
-```bash
-npm publish
-```
+Check out the [react example](https://github.com/splitflow/react/tree/master/example) for an integration with NextJs with SSR support, or the 
+[example page](https://github.com/splitflow/editor/tree/master/src/routes/+page.svelte) for an integration in a SvelteKit project.
